@@ -1,0 +1,21 @@
+html {
+  font-size: 18px;
+}
+
+body {
+  font-family: sans-serif;
+}
+
+header {
+  text-align: center;
+}
+
+main {
+  max-width: 40rem;
+  margin: 0 auto;
+}
+
+footer {
+  margin-top: 3em;
+  font-style: italic;
+}

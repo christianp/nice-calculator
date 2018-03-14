@@ -1,0 +1,30 @@
+{
+    "name": "CLP's Nice Calculator",
+    "short_name": "NiceCalculator",
+    "start_url": "index.html",
+    "display": "standalone",
+    "background_color": "#81d3ef",
+    "theme_color": "#81d3ef",
+    "icons": [
+        {
+            "src": "https://cdn.glitch.com/dc42737a-7690-49b7-9f61-fa3f0ff2b4a3%2Fnice-calculator-128.png?1548666217941",
+            "type": "image/png",
+            "sizes": "128x128"
+        },
+        {
+            "src": "https://cdn.glitch.com/dc42737a-7690-49b7-9f61-fa3f0ff2b4a3%2Fnice-calculator-144.png?1548666218007",
+            "type": "image/png",
+            "sizes": "144x144"
+        },
+        {
+            "src": "https://cdn.glitch.com/dc42737a-7690-49b7-9f61-fa3f0ff2b4a3%2Fnice-calculator-152.png?1548666217972",
+            "type": "image/png",
+            "sizes": "152x152"
+        },
+        {
+            "src": "https://cdn.glitch.com/dc42737a-7690-49b7-9f61-fa3f0ff2b4a3%2Fnice-calculator-192.png?1548666217991",
+            "type": "image/png",
+            "sizes": "192x192"
+        }
+    ]
+}

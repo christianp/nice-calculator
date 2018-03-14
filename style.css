@@ -1,0 +1,343 @@
+html {
+    font-size: 2vh;
+}
+
+* {
+    box-sizing: border-box;
+}
+
+body {
+    margin: 0;
+}
+
+#app {
+  display: grid;
+  justify-items: center;
+}
+
+#help-link {
+  z-index: 1000;
+  position: absolute;
+  left: 0;
+  top: 0;
+  background: hsl(195.3, 77.5%, 72.2%);
+  padding: 1em;
+  color: white;
+  font-family: sans-serif;
+  font-style: italic;
+  border-radius: 0 0 1em;
+}
+
+.calculator {
+    position: absolute;
+    height: 100vh;
+    width: 100vw;
+    max-width: 40rem;
+    display: grid;
+    grid: 1fr repeat(6,7vh) 4vh / repeat(5,1fr);
+    grid-auto-rows: 7vh;
+    grid-template-areas: 
+        "display display display display display"
+        "input input input input delete"
+        "next-screen pop swap copy undo"
+        "num-7 num-8 num-9 constant-pi constant-e"
+        "num-4 num-5 num-6 op-mul op-div"
+        "num-1 num-2 num-3 op-add op-sub"
+        "num-0 sign dot push push"
+        "up down left right ."
+    ;
+    grid-gap: 0.1em;
+    padding-bottom: 0.5em;
+}
+.editor {
+    position: absolute;
+    height: 100vh;
+    width: 100vw;
+    max-width: 40rem;
+    display: grid;
+    grid: 4vh 1fr 4vh repeat(4,7vh) 4vh / repeat(5,1fr);
+    grid-auto-rows: 7vh;
+    grid-template-areas: 
+        "code-desc symbol-label symbol kind-label kind"
+        "code code code code code"
+        "warning warning warning warning warning"
+        "num-7 num-8 num-9 constant-pi constant-e"
+        "num-4 num-5 num-6 op-mul op-div"
+        "num-1 num-2 num-3 op-add op-sub"
+        "num-0 sign dot push push"
+        "up down left right ."
+    ;
+    grid-gap: 0.1em;
+    padding-bottom: 0.5em;
+}
+
+.editor .code {
+  grid-area: code;
+  border: none;
+  font-size: 1em;
+  font-family: monospace;
+  border: 3px solid #ccc;
+  padding: 0.2em;
+  resize: none;
+}
+.editor .warning {
+  grid-area: warning;
+}
+.editor .back-to-calculator {
+  grid-area: num-7;
+}
+.editor label { 
+  font-size: 1em;
+  line-height: 2em;
+  font-family: sans-serif;
+  text-align: right;
+  padding-right: 0.5em;
+}
+.editor label[for="editor-code"] {
+  grid-area: code-desc;
+  text-align: left;
+  font-family: monospace;
+  color: hsl(0,0%,50%);
+}
+.editor label[for="editor-symbol"] {grid-area: symbol-label; }
+.editor label[for="editor-kind"] { grid-area: kind-label; }
+.editor #editor-kind { 
+  font-size: 1em;
+  grid-area: kind; 
+}
+.editor #editor-symbol {
+    overflow-x: auto;
+    grid-area: symbol;
+    width: 100%;
+    height: 100%;
+    padding: 0 1em 0;
+    border: 1px solid #ccc;
+    text-align: left;
+    font-size: 1.5em;
+    font-family: monospace;
+    line-height: 2em;
+}
+.editor .editable-op.current {
+    background: hsl(120,50%,75%);
+}
+.editor .editable-op.current:hover {
+    background: hsl(120,50%,85%);
+}
+.editor .editable-op.current:active {
+    background: hsl(120,50%,65%);
+}
+
+.calculator > .stack {
+    grid-area: display;
+    padding: 0 0.2em 0.5em 0.2em;
+    overflow-y: auto;
+    font-size: 1.5rem;
+    border-bottom: 3px solid #ccc;
+    background: #eee;
+}
+.calculator .stack .stack {
+    font-size: 1rem;
+}
+.calculator > .stack > .stack-items {
+    justify-content: end;
+}
+button {
+    border: none;
+    border-radius: 0.2em;
+    padding: 0;
+    font-size: 1.5em;
+    background: hsl(0,0%,80%);
+    cursor: pointer;
+}
+button:hover {
+    background: hsl(0,0%,90%);
+}
+button:active {
+    background: hsl(0,0%,70%);
+}
+
+.calculator.screen-main > button[data-screen]:not([data-screen="main"]) {
+    display: none;
+}
+.calculator.screen-trig > button[data-screen]:not([data-screen="trig"]) {
+    display: none;
+}
+.calculator.screen-custom > button[data-screen]:not([data-screen="custom"]) {
+    display: none;
+}
+
+.calculator > .input {
+    overflow-x: auto;
+    grid-area: input;
+    width: 100%;
+    height: 100%;
+    padding: 0 1em 0;
+    border: none;
+    text-align: right;
+    font-size: 1.5em;
+    font-family: monospace;
+    line-height: 2em;
+}
+.calculator > .input.new {
+    color: hsl(0,0%,50%);
+    font-style: italic;
+}
+
+.op > .stack {
+    margin-left: 1em;
+}
+.stack {
+    font-family: monospace;
+    position: relative;
+}
+.stack-items {
+    display: grid;
+    grid-auto-flow: row;
+    justify-content: start;
+    justify-items: start;
+    align-content: end;
+    margin: 0;
+    padding: 0;
+    list-style: none;
+    min-height: 100%;
+}
+.stack ~ * {
+}
+.op > .symbol {
+    padding-left: 1em;
+}
+.op > .result {
+    border-top: 1px solid black;
+}
+
+.item-container {
+    transition: all 0.2s;
+}
+.stack-enter, .stack-leave-to {
+    opacity: 0;
+}
+.stack-leave-active {
+    opacity: 0;
+    position: absolute;
+    bottom: 0.5em;
+    right: 1em;
+}
+
+.item {
+    padding: 0.1em 0.3em;
+    border-radius: 0.2em 0.2em 0.2em 0;
+    border: 2px solid transparent;
+    position: relative;
+    line-height: 1em;
+}
+.item .label {
+  position: absolute;
+  top: -0.5em;
+  left: -0.5em;
+  font-size: 0.7em;
+}
+.item.op {
+    background: hsl(60,50%,85%);
+    border-color: white;
+}
+.item.number {
+    background: hsl(240,50%,85%);
+}
+.item.selected {
+    border-color: white;
+    border-style: dashed;
+}
+
+.item-container {
+  justify-self: end;
+  display: grid;
+  grid-template-columns: auto auto;
+  grid-template-areas: "notation item";
+  grid-gap: 1em;
+  max-width: 100%;
+}
+.item-container > .notation {
+  align-self: end;
+  grid-area: notation;
+  color: hsl(0,0%,40%);
+  font-style: italic;
+  font-size: 0.9em;
+}
+.item-container .item {
+  grid-area: item;
+}
+
+.stack-items > .item-container ~ .item-container {
+    margin-top: 0.1em;
+}
+
+.backspace {
+    grid-area: delete;
+}
+.push {
+    grid-area: push;
+}
+.dot {
+    grid-area: dot;
+}
+.sign {
+    grid-area: sign;
+}
+.calculator > button.digit {
+    background: hsl(120,50%,75%);
+}
+.calculator > button.digit:hover {
+    background: hsl(120,50%,85%);
+}
+.calculator > button.digit:active {
+    background: hsl(120,50%,65%);
+}
+.calculator > button.constant {
+    background: hsl(60,50%,65%);
+}
+.calculator > button.constant:hover {
+    background: hsl(60,50%,75%);
+}
+.calculator > button.constant:active {
+    background: hsl(60,50%,55%);
+}
+.calculator > button.op {
+    background: hsl(30,50%,55%);
+    color: white;  
+}
+.calculator > button.op:hover {
+    background: hsl(30,50%,65%);
+}
+.calculator > button.op:active {
+    background: hsl(30,50%,45%);
+}
+.calculator > button.op:disabled {
+    background: hsl(30,30%,75%);
+}
+.pop {
+    grid-area: pop;
+}
+.swap {
+    grid-area: swap;
+}
+.copy {
+    grid-area: copy;
+}
+.undo {
+    grid-area: undo;
+}
+.up {
+    grid-area: up;
+}
+.down {
+    grid-area: down;
+}
+.left {
+    grid-area: left;
+}
+.right {
+    grid-area: right;
+}
+.next-screen {
+    grid-area: next-screen;
+}
