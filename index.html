@@ -14,10 +14,6 @@
     <meta name="viewport" content="width-device-width,initial-scale=1.0">
   </head>
   <body>
-    <!-- Remix Button -->
-<a href="https://glitch.com/edit/#!/remix/nice-calculator" id="remix-button">
-  <img src="https://cdn.glitch.com/2bdfb3f8-05ef-4035-a06e-2043962a3a13%2Fremix%402x.png?1513093958726" alt="remix this" height="33">
-</a>
     <div id="app">
         <a href="help.html" target="help" id="help-link" v-if="mode=='calculator'">Help!</a>
         <div class="calculator" v-if="mode=='calculator'" :class="['screen-'+screen]" v-hammer:swipe="swipe">
