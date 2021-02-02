@@ -1,8 +1,8 @@
 {
     "name": "CLP's Nice Calculator",
     "short_name": "NiceCalculator",
-    "start_url": "index.html",
-    "display": "standalone",
+    "start_url": "/index.html",
+    "display": "fullscreen",
     "background_color": "#81d3ef",
     "theme_color": "#81d3ef",
     "icons": [

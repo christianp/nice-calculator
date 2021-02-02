@@ -164,7 +164,7 @@ Vue.component('stack-item', {
         }
     },
     mounted: function() {
-        this.$el.scrollIntoView({block: 'center'});
+        this.$el.scrollIntoView && this.$el.scrollIntoView({block: 'center'});
     },
     computed: {
         top: function() {
@@ -172,19 +172,23 @@ Vue.component('stack-item', {
         },
         show_notation: function() {
             return this.top && this.item.kind=='op';
+        },
+        label_length: function() {
+            return (this.label || '').length;
         }
     },
     watch: {
         selected: function() {
             if(this.selected) {
-                this.$el.scrollIntoView({block: 'center'});
+                this.$el.scrollIntoView && this.$el.scrollIntoView({block: 'center'});
             }
         }
     },
     template: `
         <div class="item-container" @click="click">
+          <input v-if="selected && item.kind=='number'" class="edit-name" v-model="item.label"></input>
           <li class="item" :class="[selected ? 'selected' : '',item.kind]">
-              <span v-if="item.label" class="label">{{item.label}}</span>
+              <span v-if="!selected && item.label" class="label">{{item.label}}</span>
               <item-number v-if="item.kind=='number'" :item="item"></item-number>
               <item-op v-if="item.kind=='op'" :op="item.op" :args="item.args" :value="item.value" :depth="depth" :path="path" :selection_path="selection_path" @click-item="click_item"></item-op>
           </li>
@@ -335,8 +339,8 @@ const app = new Vue({
     ops: ops,
     input: '',
     stack: stack,
-    screens: ['main','trig','custom'],
-    screen_index: 0,
+    screens: ['main','trig','custom','named'],
+    screen_index: 0 ,
     
     custom_ops: custom_ops,
     edit_op: custom_ops[0],
@@ -413,6 +417,21 @@ const app = new Vue({
           return null;
         }
         return fn;
+      },
+    
+      named_items: function() {
+        let look = this.stack.slice();
+        const items = new Set();
+        while(look.length) {
+          const item = look.pop();
+          if(item.label) {
+            items.add(item);
+          }
+          if(item.args) {
+            look = look.concat(item.args);
+          }
+        }
+        return Array.from(items);
       }
   },
   watch: {
@@ -522,6 +541,7 @@ const app = new Vue({
         if(!this.new_input) {
             this.add_number();
         }
+        this.screen_index = 0;
         const arity = op.arity===Infinity ? this.row+1 : op.arity;
         const raw_args = this.current_stack.splice(this.row-(arity-1),arity);
         const args = [];
@@ -582,6 +602,9 @@ const app = new Vue({
             [this.current_stack,this.row] = this.parent_stacks.pop();
         }
         this.push(item.copy());
+    },
+    add_named_item(item) {
+        this.push(item);
     },
     undo: function() {
         if(!this.can_undo) {
@@ -732,6 +755,9 @@ const app = new Vue({
   }
 })
 document.body.addEventListener('keydown',function(e) {
+    if(e.target.tagName=='INPUT') {
+      return;
+    }
     app.keypress(e);
 })
 

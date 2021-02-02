@@ -15,43 +15,44 @@
   </head>
   <body>
     <div id="app">
-        <a href="help.html" target="help" id="help-link" v-if="mode=='calculator'">Help!</a>
-        <div class="calculator" v-if="mode=='calculator'" :class="['screen-'+screen]" v-hammer:swipe="swipe">
-            <item-stack :items="stack" :depth="0" :path="[]" :selection_path="path" @click-item="click_item"></item-stack>
-            <span class="input" type="text" :class="{'new': new_input}">{{input}}</span>
-            <touch-button @click="add_number" class="push" title="Enter">Enter</touch-button>
-            <touch-button @click="backspace" class="backspace" title="Backspace">⌫</touch-button>
-            <touch-button v-for="op in ops" class="op" @click="add_op(op)" :disabled="!can_op(op)" :style="{'grid-area': op.area || 'op-'+op.op}" :data-screen="op.screen" :title="op.key">{{op.label}}</touch-button>
-            <touch-button v-for="constant in constants" class="constant" @click="add_constant(constant)" :style="{'grid-area': constant.area || 'constant-'+constant.name}" :data-screen="constant.screen" :title="constant.key">{{constant.label}}</touch-button>
-            <touch-button class="digit" v-for="n in [1,2,3,4,5,6,7,8,9,0]" @click="digit(n)" :style="{'grid-area':'num-'+n}" data-screen="main" :title="n">{{n}}</touch-button>
-            <touch-button class="dot digit" data-screen="main" @click="dot" title=".">.</touch-button>
-            <touch-button class="sign digit" data-screen="main" @click="sign" title="`">±</touch-button>
-            <touch-button class="pop" @click="pop" :disabled="!can_pop" title="Delete">Drop</touch-button>
-            <touch-button class="swap" @click="swap" :disabled="!can_swap" title="w">Swap</touch-button>
-            <touch-button class="copy" @click="copy" title="d">Copy</touch-button>
-            <touch-button class="undo" @click="undo" :disabled="!can_undo" title="u">Undo</touch-button>
-            <touch-button class="up" @click="up" title="Up">⬆</touch-button>
-            <touch-button class="down" @click="down" title="Down">⬇</touch-button>
-            <touch-button class="left" @click="left" title="Left">⬅</touch-button>
-            <touch-button class="right" @click="right" title="Right">➡</touch-button>
-            <touch-button class="next-screen" @click="next_screen" title="Tab">Shift</touch-button>
-            <touch-button class="add-custom" @click="edit_custom">✎</touch-button>
-            <touch-button v-for="custom in custom_ops" class="custom-op" v-if="custom.valid" :disabled="!can_custom(custom)" data-screen="custom" @click="add_custom(custom)" :style="{'grid-area': custom.position}">{{custom.symbol}}</touch-button>
-        </div>
-        <div class="editor" v-if="mode=='editor'">
-          <label class="symbol-label" for="editor-symbol">Symbol</label>
-          <input type="text" id="editor-symbol" v-model="edit_op.symbol">
-          <label class="kind-label" for="editor-kind">Kind</label>
-          <select id="editor-kind" v-model="edit_op.kind">
-            <option value="unary">Unary</option>
-            <option value="binary">Binary</option>
-            <option value="constant">Constant</option>
-          </select>
-          <label for="editor-code">{{editor_signature}}</label>
-          <span class="warning">{{editor_warning}}</span>
-          <textarea v-model="edit_op.code" class="code" id="editor-code"></textarea>
-          <touch-button class="back-to-calculator" @click="escape">←</touch-button>
-          <touch-button v-for="op in custom_ops" class="editable-op" :class="{'current': edit_op==op}" @click="set_edit_op(op)">{{op.symbol}}</touch-button>
+      <a href="help.html" target="help" id="help-link" v-if="mode=='calculator'">Help!</a>
+      <div class="calculator" v-if="mode=='calculator'" :class="['screen-'+screen]" v-hammer:swipe="swipe">
+          <item-stack :items="stack" :depth="0" :path="[]" :selection_path="path" @click-item="click_item"></item-stack>
+          <span class="input" type="text" :class="{'new': new_input}">{{input}}</span>
+          <touch-button @click="add_number" class="push" title="Enter">Enter</touch-button>
+          <touch-button @click="backspace" class="backspace" title="Backspace">⌫</touch-button>
+          <touch-button v-for="op in ops" class="op" @click="add_op(op)" :disabled="!can_op(op)" :style="{'grid-area': op.area || 'op-'+op.op}" :data-screen="op.screen" :title="op.key">{{op.label}}</touch-button>
+          <touch-button v-for="constant in constants" class="constant" @click="add_constant(constant)" :style="{'grid-area': constant.area || 'constant-'+constant.name}" :data-screen="constant.screen" :title="constant.key">{{constant.label}}</touch-button>
+          <touch-button class="digit" v-for="n in [1,2,3,4,5,6,7,8,9,0]" @click="digit(n)" :style="{'grid-area':'num-'+n}" data-screen="main" :title="n">{{n}}</touch-button>
+          <touch-button class="dot digit" data-screen="main" @click="dot" title=".">.</touch-button>
+          <touch-button class="sign digit" data-screen="main" @click="sign" title="`">±</touch-button>
+          <touch-button class="pop" @click="pop" :disabled="!can_pop" title="Delete">Drop</touch-button>
+          <touch-button class="swap" @click="swap" :disabled="!can_swap" title="w">Swap</touch-button>
+          <touch-button class="copy" @click="copy" title="d">Copy</touch-button>
+          <touch-button class="undo" @click="undo" :disabled="!can_undo" title="u">Undo</touch-button>
+          <touch-button class="up" @click="up" title="Up">⬆</touch-button>
+          <touch-button class="down" @click="down" title="Down">⬇</touch-button>
+          <touch-button class="left" @click="left" title="Left">⬅</touch-button>
+          <touch-button class="right" @click="right" title="Right">➡</touch-button>
+          <touch-button class="next-screen" @click="next_screen" title="Tab">Shift</touch-button>
+          <touch-button class="add-custom" @click="edit_custom">✎</touch-button>
+          <touch-button v-for="custom in custom_ops" class="custom-op" v-if="custom.valid" :disabled="!can_custom(custom)" data-screen="custom" @click="add_custom(custom)" :style="{'grid-area': custom.position}">{{custom.symbol}}</touch-button>
+          <touch-button v-for="item in named_items" class="named-item" data-screen="named" @click="add_named_item(item)" >{{item.label}}</touch-button>
+      </div>
+      <div class="editor" v-if="mode=='editor'">
+        <label class="symbol-label" for="editor-symbol">Symbol</label>
+        <input type="text" id="editor-symbol" v-model="edit_op.symbol">
+        <label class="kind-label" for="editor-kind">Kind</label>
+        <select id="editor-kind" v-model="edit_op.kind">
+          <option value="unary">Unary</option>
+          <option value="binary">Binary</option>
+          <option value="constant">Constant</option>
+        </select>
+        <label for="editor-code">{{editor_signature}}</label>
+        <span class="warning">{{editor_warning}}</span>
+        <textarea v-model="edit_op.code" class="code" id="editor-code"></textarea>
+        <touch-button class="back-to-calculator" @click="escape">←</touch-button>
+        <touch-button v-for="op in custom_ops" class="editable-op" :class="{'current': edit_op==op}" @click="set_edit_op(op)">{{op.symbol}}</touch-button>
       </div>
     </div>
   </body>

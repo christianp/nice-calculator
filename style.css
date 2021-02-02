@@ -21,7 +21,7 @@ body {
   left: 0;
   top: 0;
   background: hsl(195.3, 77.5%, 72.2%);
-  padding: 1em;
+  padding: 0.5em;
   color: white;
   font-family: sans-serif;
   font-style: italic;
@@ -44,7 +44,7 @@ body {
         "num-4 num-5 num-6 op-mul op-div"
         "num-1 num-2 num-3 op-add op-sub"
         "num-0 sign dot push push"
-        "up down left right ."
+        "up down left right add-custom"
     ;
     grid-gap: 0.1em;
     padding-bottom: 0.5em;
@@ -165,6 +165,13 @@ button:active {
 .calculator.screen-custom > button[data-screen]:not([data-screen="custom"]) {
     display: none;
 }
+.calculator.screen-named > button[data-screen]:not([data-screen="named"]) {
+    display: none;
+}
+
+button.add-custom {
+  grid-area: add-custom;
+}
 
 .calculator > .input {
     overflow-x: auto;
@@ -233,8 +240,17 @@ button:active {
 .item .label {
   position: absolute;
   top: -0.5em;
-  left: -0.5em;
-  font-size: 0.7em;
+  right: 110%;
+  font-size: 0.6em;
+  text-align: right;
+  white-space: nowrap;
+}
+.item-container .edit-name {
+  background: none;
+  border: 0;
+  border-bottom: 1px solid black;
+  width: 3em;
+  text-align: right;
 }
 .item.op {
     background: hsl(60,50%,85%);
