@@ -134,7 +134,9 @@ class Op extends Item {
     return args+','+op;
   }
   toNotation() {
-    if(this.op.precedence) {
+    if(this.op.toNotation) {
+        return this.op.toNotation(this.args);
+    } else if(this.op.precedence) {
       const args = this.args.map(arg=>{
         const argn = arg.toNotation();
         if(arg instanceof Op && (arg.op.precedence<this.op.precedence || (arg.op.precedence==this.op.precedence && arg.op.symbol!=this.op.symbol))) {
@@ -207,14 +209,17 @@ Vue.component('item-op', {
     },
     computed: {
       more_digits: function() {
-        const s = this.value.toString(this.digits_shown);
-        const m = s.match(/(-?)(\d+)(?:\.(\d+))?/);
-        const [sign, whole, frac] = m.slice(1);
-        const space = '     '.slice(0,(5 - (whole.length%5))%5);
-        const first = whole.slice(0,whole.length % 5);
-        const rest = whole.slice(whole.length % 5).replace(/(.{5})/g,' $1').trim();
-        let spaced_whole = space + first + (first && rest ? ' ' : '') + rest;
-        return spaced_whole + (frac ? '.'+frac.replace(/(.{5})/g,'$1 ').trim() : '');
+          if(this.value instanceof CalculationError) {
+              return {whole: this.value+'', frac: ''};
+          }
+          const s = this.value.toString(this.digits_shown);
+          const m = s.match(/(-?)(\d+)(?:\.(\d+))?/);
+          const [sign, whole, frac] = m.slice(1);
+          const space = '     '.slice(0,(5 - (whole.length%5))%5);
+          const first = whole.slice(0,whole.length % 5);
+          const rest = whole.slice(whole.length % 5).replace(/(.{5})/g,' $1').trim();
+          let spaced_whole = space + first + (first && rest ? ' ' : '') + rest;
+          return {whole: spaced_whole, frac: frac.replace(/(.{5})/g,'$1 ').trim()};
       }
     },
     methods: {
@@ -235,6 +240,12 @@ Vue.component('item-op', {
             if(p.scrollTop > p.scrollHeight - 100) {
                 this.digits_shown += 500;
             }
+        },
+        tap: function() {
+            if(window.getSelection().type == 'Range') {
+                return;
+            }
+            this.$emit('collapse_values')
         }
     },
     template: `
@@ -242,9 +253,9 @@ Vue.component('item-op', {
             <item-stack v-if="!args_collapsed" :items="args" :depth="depth+1" :path="path" :selection_path="selection_path" @click-item="click_item"></item-stack>
             <div class="symbol" v-if="!args_collapsed" @click="collapse_args">{{op.label}}</div>
             <div class="show-collapsed" v-if="args_collapsed" @click="collapse_args">...</div>
-            <div class="result" @click="$emit('collapse_values')">
+            <div class="result" @click="tap">
                 <item-number v-if="value_collapsed" :value="value"></item-number>
-                <pre class="more-digits" v-if="!value_collapsed" @scroll="scroll_more_digits">{{more_digits}}</pre>
+                <pre class="more-digits" v-if="!value_collapsed" @scroll="scroll_more_digits"><span class="whole">{{more_digits.whole}}</span><span v-if="more_digits.frac">.</span><span class="frac" v-if="more_digits.frac">{{more_digits.frac}}</span></pre>
             </div>
         </div>
     `
@@ -333,7 +344,7 @@ Vue.component('item-stack', {
 })
 
 function factorial(n) {
-    n = n.abs().intValue();
+    n = n.abs().BigIntValue();
     let t = 1n;
     while(n>=1n) {
         t *= n;
@@ -367,6 +378,14 @@ function mean(...args) {
   return sum(...args).divide(CReal.valueOf(args.length));
 }
 
+function bracket_postfix(symbol) {
+    return function(args) {
+        const [arg] = args;
+        const x = arg.toNotation();
+        return arg instanceof NumberItem ? `${x}${symbol}` : `(${x})${symbol}`;
+    }
+}
+
 const ops = [
     {op: 'add', 'label': '+', 'key': '+', arity: 2, fn: sum, screen: 'main', chain: true, precedence: 1, symbol: '+'},
     {op: 'sub', 'label': '-', 'key': '-', arity: 2, fn: (a,b) => a.subtract(b), screen: 'main', precedence: 1, symbol: '-'},
@@ -377,23 +396,23 @@ const ops = [
     {op: 'tan', 'label': 'Tan', 'key': 't', arity: 1, fn: a => a.sin().divide(a.cos()), area: 'num-9', screen: 'trig'},
     {op: 'arcsin', 'label': 'Sin⁻¹', 'key': 'S', arity: 1, fn: a => a.asin(), area: 'num-4', screen: 'trig'},
     {op: 'arccos', 'label': 'Cos⁻¹', 'key': 'C', arity: 1, fn: a => a.acos(), area: 'num-5', screen: 'trig'},
-    {op: 'arctan', 'label': 'Tan⁻¹', 'key': 'T', arity: 1, fn: a => a.divide(a.add(CReal.ONE).sqrt()).asin(), area: 'num-6', screen: 'trig'},
-    {op: 'square', 'label': 'x²', 'key': '^', arity: 1, fn: x => x.multiply(x), area: 'num-0', screen: 'trig'},
+    {op: 'arctan', 'label': 'Tan⁻¹', 'key': 'T', arity: 1, fn: a => a.divide(a.multiply(a).add(CReal.ONE).sqrt()).asin(), area: 'num-6', screen: 'trig'},
+    {op: 'square', 'label': 'x²', 'key': '^', arity: 1, fn: x => x.multiply(x), area: 'num-0', screen: 'trig', toNotation: bracket_postfix('²'), precedence: 3},
     {op: 'root', 'label': '√', 'key': 'r', arity: 1, fn: x => x.sqrt(), area: 'sign', screen: 'trig', symbol: '√'},
     {op: 'pow', 'label': 'xʸ', 'key': 'p', arity: 2, fn: (a,b) => a.pow(b), area: 'dot', screen: 'trig', precedence: '3', symbol: '^'},
     {op: 'ln', 'label': 'ln', 'key': 'l', arity: 1, fn: a => a.ln(), area: 'op-mul', screen: 'trig'},
     {op: 'log', 'label': 'log', 'key': 'L', arity: 1, fn: a => a.ln().divide(CReal.valueOf(10).ln()), area: 'op-div', screen: 'trig'},
     {op: 'exp', 'label': 'eˣ', 'key': 'e', arity: 1, fn: a => a.exp(), area: 'op-add', screen: 'trig'},
     {op: 'exp10', 'label': '10ˣ', 'key': 'E', arity: 1, fn: a => a.multiply(CReal.valueOf(10).ln()).exp(), area: 'op-sub', screen: 'trig'},
-    {op: 'factorial', 'label': 'x!', 'key': '!', arity: 1, fn: factorial, area: 'num-3', screen: 'trig'},
+    {op: 'factorial', 'label': 'x!', 'key': '!', arity: 1, fn: factorial, area: 'num-3', screen: 'trig', toNotation: bracket_postfix('!')},
     {op: 'combinations', 'label': 'ⁿCᵣ', 'key': '', arity: 2, fn: combinations, area: 'constant-pi', screen: 'trig'},
     {op: 'permutations', 'label': 'ⁿPᵣ', 'key': '', arity: 2, fn: permutations, area: 'constant-e', screen: 'trig'},
     {op: 'mean', 'label': 'Mean', 'key': 'm', arity: Infinity, fn: mean, area: 'num-1', screen: 'trig'},
-    {op: 'mod', 'label': 'Mod', 'key': '%', arity: 2, fn: (a,b) => a.mod(b), area: 'num-2', screen: 'trig'},
+    {op: 'mod', 'label': 'Mod', 'key': '%', arity: 2, fn: (a,b) => CReal.valueOf(a.BigIntValue() % b.BigIntValue()), area: 'num-2', screen: 'trig'},
 ];
 
 const constants = [
-    {name: 'pi', value: CReal.PI, label: 'π', screen: 'main'},
+    {name: 'pi', value: CReal.PI, label: 'π', screen: 'main', key: 'P'},
     {name: 'e', value: CReal.E, label: 'e', screen: 'main'},
 ];
 
@@ -435,7 +454,7 @@ const custom_ops = [];
 custom_op_positions.forEach((location,i) => {
   custom_ops.push(new CustomOp(i,location));
 })
-const app = new Vue({
+const app = window.app = new Vue({
   el: '#app',
   data: {
     mode: 'calculator',
@@ -478,7 +497,7 @@ const app = new Vue({
       title: function() {
           const main = "CLP's Nice Calculator";
           if(this.selection) {
-              return `${this.selection.value} - ${main}`;
+              return `${nice_number(this.selection.value)} - ${main}`;
           } else {
               return main;
           }
@@ -550,7 +569,7 @@ const app = new Vue({
           }
           if(item.kind=='number') {
             this.new_input = true;
-            this.input = item.value+'';
+            this.input = nice_number(item.value);
           }
       },
       title: function() {
@@ -623,20 +642,29 @@ const app = new Vue({
         if(!this.top_stack) {
             const item = this.current_stack[this.row];
             if(item.kind == 'number') {
-                item.value = val;
-                this.reevaluate();
+                this.current_stack.splice(this.row,1,new NumberItem(val));
             }
         } else {
             this.push(new NumberItem(val));
         }
     },
     add_constant: function(constant) {
-      this.push(new ConstantItem(constant));
-    },
-    reevaluate: function() {
-        for(let [stack,row] of this.parent_stacks.slice().reverse()) {
-            const item = stack[row];
-            item.value = fns[item.op.op](...item.args.map(x=>x.value));
+        if(!this.top_stack) {
+            const item = this.current_stack[this.row];
+            if(item.kind == 'number') {
+                this.current_stack.splice(this.row,1,new ConstantItem(constant));
+                this.new_input = true;
+                this.row += 1;
+            }
+            return;
+        }
+        const multiple = !this.new_input;
+        if(multiple) {
+            this.add_number();
+        }
+        this.push(new ConstantItem(constant));
+        if(multiple) {
+            this.add_op(ops.find(op=>op.op=='mul'));
         }
     },
     add_op: function(op) {
@@ -662,7 +690,6 @@ const app = new Vue({
         }
         this.row -= arity;
         this.push(new Op(op,args));
-        this.reevaluate();
     },
     add_custom: function(custom) {
         if(custom.kind=='constant') {
@@ -838,6 +865,11 @@ const app = new Vue({
               });
               for(let o of this.ops) {
                   keys[o.key] = e => this.add_op(o);
+              }
+              for(let c of this.constants) {
+                  if(c.key) {
+                      keys[c.key] = e => this.add_constant(c);
+                  }
               }
             break;
           case 'editor':

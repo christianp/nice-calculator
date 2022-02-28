@@ -234,6 +234,9 @@ button.add-custom {
   white-space: pre-wrap;
   height: 3em;
 }
+.op > .result .more-digits .frac {
+    font-style: italic;
+}
 
 .item-container {
     transition: all 0.2s;
