@@ -1,14 +1,14 @@
-var CACHE_NAME = 'clps-nice-calculator-v1';
+var CACHE_NAME = 'clps-nice-calculator-v2';
 var urlsToCache = [
     './',
     'style.css',
+    'creal.js',
     'index.html',
     'script.js',
     'emoji.js',
     'help.html',
     'help.css',
     'vue.js',
-    'decimal.min.js',
     'hammer.js',
     'vue-hammer.js'
 ];
