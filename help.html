@@ -13,93 +13,217 @@
       </h1>
     </header>
     <main>
-      <p>
-        This is an <a href="https://en.wikipedia.org/wiki/Reverse_Polish_notation">RPN</a>, or stack-based, calculator.
-        You put numbers on the stack, and then you do things to them.
-      </p>
-      <p>
-        For example, to work out <em>1 + 3</em>, you'd:
-      </p>
-      <ol style="list-style: disc;">
-          <li>Type <code>1</code></li>
-          <li>Press <code>Enter</code></li>
-          <li>Type <code>3</code></li>
-          <li>Press <code>Enter</code></li>
-          <li>Press <code>+</code></li>
-      </ol>
-      <p>
-        It's a different way of doing things to a normal calculator, but it can be much more efficient for complicated calculations.
-      </p>
-      <p>
-        This calculator not only displays the results of calculations, but shows you what went into producing them.
-      </p>
-      <p>
-        The display shows the current stack. Input numbers are shown in blue, and operations are shown in yellow.
-      </p>
-      <p>
-        Type a number and press <code>Enter</code> to push it onto the stack.
-      </p>
-      <p>
-        You can tap any item on the stack to select it, or use the arrow keys to move the selection. 
-      </p>
-      <p>
-        When you push a number, it's inserted below the selected item.
-      </p>
-      <p>
-        Input numbers inside an operation can't be deleted, but they can be changed, moved or copied.
-      </p>
-      <p>
-        To change a number inside an operation, select it, type the new value, and press <code>Enter</code>.
-      </p>
-      <p>
-        When you copy a number, it's given a label to identify it. If you change the value of the number, it changes in all the copies too.
-      </p>
-      
-      <p>
-        Nested operations are folded up by default. Click on an operation to unfold it and see what's inside.
-      </p>
-      
-      <table>
-        <thead>
-          <tr>
-            <th>Command</th>
-            <th>Key</th>
-            <th></th>
-          </tr>
-        </thead>
-        <tbody>
-          <tr>
-            <td>Shift</td>
-            <td>Tab</td>
-            <td>Switch to the next screen of buttons.</td>
-          </tr>
-          <tr>
-            <td>Drop</td>
-            <td>Delete</td>
-            <td>Remove the selected item from the stack.</td>
-          </tr>
-          <tr>
-            <td>Swap</td>
-            <td>w</td>
-            <td>The selected item and the one above it exchange places.</td>
-          </tr>
-          <tr>
-            <td>Copy</td>
-            <td>d</td>
-            <td>Add a copy of the selected item to the bottom of the stack. Copies of the same number are linked - if you change the value for one, it changes in all the copies too.</td>
-          </tr>
-          <tr>
-            <td>Undo</td>
-            <td>u</td>
-            <td>When you've selected an operation, undo it and leave its arguments in place on the stack.</td>
-          </tr>
-        </tbody>
-      </table>
+        <section>
+            <p>
+                This is an <a href="https://en.wikipedia.org/wiki/Reverse_Polish_notation">RPN</a>, or stack-based, calculator.
+                You put numbers on the stack, and then you do things to them.
+            </p>
+            <p>
+                For example, to work out <em>1 + 3</em>, you'd:
+            </p>
+            <ol style="list-style: disc;">
+                <li>Type <kbd>1</kbd></li>
+                <li>Press <kbd>Enter</kbd></li>
+                <li>Type <kbd>3</kbd></li>
+                <li>Press <kbd>Enter</kbd></li>
+                <li>Press <kbd>+</kbd></li>
+            </ol>
+            <p>
+                It's a different way of doing things to a normal calculator, but it can be much more efficient for complicated calculations.
+            </p>
+            <p>
+                This calculator not only displays the results of calculations, but shows you what went into producing them.
+            </p>
+            <p>
+                The display shows the current stack. Input numbers are shown in blue, and operations are shown in yellow.
+            </p>
+            <p>
+                Type a number and press <kbd>Enter</kbd> to push it onto the stack.
+            </p>
+            <p>
+                You can tap any item on the stack to select it, or use the arrow keys to move the selection. 
+            </p>
+            <p>
+                When you push a number, it's inserted below the selected item.
+            </p>
+            <p>
+                Input numbers inside an operation can't be deleted, but they can be changed, moved or copied.
+            </p>
+            <p>
+                To change a number inside an operation, select it, type the new value, and press <kbd>Enter</kbd>.
+            </p>
+            <p>
+                When you copy a number, it's given a label to identify it. If you change the value of the number, it changes in all the copies too.
+            </p>
+
+            <p>
+                Nested operations are folded up by default. Click on an operation to unfold it and see what's inside.
+            </p>
+
+            <p>
+               Click on the result value of an operation, or press the <kbd>?</kbd> key to see more digits.
+            </p>
+        </section>
+
+        <section>
+            <h2>Keyboard commands</h2>
+            <p>
+                If you have a keyboard, you can type numbers and operations.
+                There are also keys for most of the other on-screen buttons.
+            </p>
+            <h3>Manipulating the stack</h3>
+            <table>
+                <thead>
+                    <tr>
+                        <th>Key</th>
+                        <th>Command</th>
+                        <th></th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <tr>
+                        <td><kbd>`</kbd></td>
+                        <td>Sign</td>
+                        <td>Change the sign of the number being entered.</td>
+                    </tr>
+                    <tr>
+                        <td><kbd>Tab</kbd></td>
+                        <td>Shift</td>
+                        <td>Switch to the next screen of buttons.</td>
+                    </tr>
+                    <tr>
+                        <td><kbd>Delete</kbd></td>
+                        <td>Drop</td>
+                        <td>Remove the selected item from the stack.</td>
+                    </tr>
+                    <tr>
+                        <td><kbd>w</kbd></td>
+                        <td>Swap</td>
+                        <td>The selected item and the one above it exchange places.</td>
+                    </tr>
+                    <tr>
+                        <td><kbd>d</kbd></td>
+                        <td>Copy</td>
+                        <td>Add a copy of the selected item to the bottom of the stack. Copies of the same number are linked - if you change the value for one, it changes in all the copies too.</td>
+                    </tr>
+                    <tr>
+                        <td><kbd>u</kbd></td>
+                        <td>Undo</td>
+                        <td>When you've selected an operation, undo it and leave its arguments in place on the stack.</td>
+                    </tr>
+                    <tr>
+                        <td><kbd>?</kbd></td>
+                        <td>Show more digits</td>
+                        <td>When you've selected an operation, expand the result to show more digits. More digits are shown as you scroll down.</td>
+                    </tr>
+                </tbody>
+            </table>
+
+            <h3>Arithmetic operations</h3>
+            <table>
+                <thead>
+                    <tr>
+                        <th>Key</th>
+                        <th>Command</th>
+                        <th></th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <tr>
+                        <td><kbd>+</kbd></td>
+                        <td>x + y</td>
+                    </tr>
+                    <tr>
+                        <td><kbd>-</kbd></td>
+                        <td>x - y</td>
+                    </tr>
+                    <tr>
+                        <td><kbd>*</kbd></td>
+                        <td>x × y</td>
+                    </tr>
+                    <tr>
+                        <td><kbd>/</kbd></td>
+                        <td>x ÷ y</td>
+                    </tr>
+                    <tr>
+                        <td><kbd>s</kbd></td>
+                        <td>sin(x)</td>
+                    </tr>
+                    <tr>
+                        <td><kbd>c</kbd></td>
+                        <td>cos(x)</td>
+                    </tr>
+                    <tr>
+                        <td><kbd>t</kbd></td>
+                        <td>tan(x)</td>
+                    </tr>
+                    <tr>
+                        <td><kbd>S</kbd></td>
+                        <td>sin⁻¹(x)</td>
+                    </tr>
+                    <tr>
+                        <td><kbd>C</kbd></td>
+                        <td>cos⁻¹(x)</td>
+                    </tr>
+                    <tr>
+                        <td><kbd>T</kbd></td>
+                        <td>tan⁻¹(x)</td>
+                    </tr>
+                    <tr>
+                        <td><kbd>^</kbd></td>
+                        <td>x²</td>
+                    </tr>
+                    <tr>
+                        <td><kbd>r</kbd></td>
+                        <td>√x</td>
+                    </tr>
+                    <tr>
+                        <td><kbd>p</kbd></td>
+                        <td>xʸ</td>
+                    </tr>
+                    <tr>
+                        <td><kbd>l</kbd></td>
+                        <td>ln(x)</td>
+                    </tr>
+                    <tr>
+                        <td><kbd>L</kbd></td>
+                        <td>log(x)</td>
+                    </tr>
+                    <tr>
+                        <td><kbd>e</kbd></td>
+                        <td>eˣ</td>
+                    </tr>
+                    <tr>
+                        <td><kbd>E</kbd></td>
+                        <td>10ˣ</td>
+                    </tr>
+                    <tr>
+                        <td><kbd>!</kbd></td>
+                        <td>x!</td>
+                    </tr>
+                    <tr>
+                        <td><kbd>m</kbd></td>
+                        <td>Mean</td>
+                        <td>The mean of all the items on the stack.</td>
+                    </tr>
+                    <tr>
+                        <td><kbd>%</kbd></td>
+                        <td>Mod</td>
+                        <td>The remainder on dividing <code>x</code> by <code>y</code></td>
+                    </tr>
+                    <tr>
+                        <td><kbd>P</kbd></td>
+                        <td>π</td>
+                        <td>Add the constant π to the stack</td>
+                    </tr>
+                </tbody>
+            </table>
+        </section>
     </main>
     <footer>
-      <p>
+        <p>
         Made by <a href="http://somethingorotherwhatever.com">Christian Lawson-Perfect</a>.
-      </p>
+        </p>
     </footer>
   </body>
 </html>

@@ -1,21 +1,38 @@
 html {
-  font-size: 18px;
+    font-size: 18px;
 }
 
 body {
-  font-family: sans-serif;
+    font-family: sans-serif;
 }
 
 header {
-  text-align: center;
+    text-align: center;
 }
 
 main {
-  max-width: 40rem;
-  margin: 0 auto;
+    max-width: 40rem;
+    margin: 0 auto;
 }
 
 footer {
-  margin-top: 3em;
-  font-style: italic;
+    margin-top: 3em;
+    font-style: italic;
+}
+th {
+    text-align: left;
+}
+th, td {
+    padding: 0.5em;
+}
+
+tr ~ tr td {
+    border-top: 1px dashed black;
+}
+kbd {
+    background: #ddd;
+    padding: 0.2em 0.5em;
+    border-radius: 0.2em;
+    margin: 0.1em;
+    display: inline-block;
 }
