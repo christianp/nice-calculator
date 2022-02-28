@@ -6,6 +6,15 @@ import CReal from './creal.js';
 //};
 Vue.use(VueHammer);
 
+class CalculationError {
+    constructor(e) {
+        this.error = e;
+    }
+    toString() {
+        return 'ERR';
+    }
+}
+
 function choice(list) {
   const n = Math.floor(Math.random()*list.length);
   return list[n];
@@ -20,26 +29,32 @@ class Item {
 }
 
 function nice_number(n, max_length = 10) {
-    const sci = n.toStringFloatRep(max_length,10,-max_length*2);
-    if(sci.mantissa == '0') {
-        return '0';
+    if(n instanceof CalculationError) {
+        return n+'';
     }
-    if(sci.exponent < max_length && sci.exponent > -(max_length-2)/2) {
-        let s;
-        if(sci.exponent > 0) {
-            s = n.toString(max_length - sci.exponent - 1);
-        } else {
-            s = n.toString(max_length - 2);
+    try {
+        const sci = n.toStringFloatRep(max_length,10,-max_length*2);
+        if(sci.mantissa == '0') {
+            return '0';
         }
-        return s;
-//        return s.replace(/\.(.*[1-9])?0+$/,'.$1').replace(/\.$/,'');
-    } else {
-        const mantissa = `${sci.mantissa.slice(0,1)}.${sci.mantissa.slice(1)}`;
-        const sign = sci.sign == -1 ? '-' : '';
-        const exponent = (sci.exponent-1)+'';
-        const times = 'E';//'×10^';
-        const l = sign.length +times.length + exponent.length;
-        return `${sign}${mantissa.slice(0,max_length-l)}${times}${exponent}`;
+        if(sci.exponent < max_length && sci.exponent > -(max_length-2)/2) {
+            let s;
+            if(sci.exponent > 0) {
+                s = n.toString(max_length - sci.exponent - 1);
+            } else {
+                s = n.toString(max_length - 2);
+            }
+            return s.replace(/\.(.*[1-9])?0+$/,'.$1').replace(/\.$/,'');
+        } else {
+            const mantissa = `${sci.mantissa.slice(0,1)}.${sci.mantissa.slice(1)}`;
+            const sign = sci.sign == -1 ? '-' : '';
+            const exponent = (sci.exponent-1)+'';
+            const times = 'E';//'×10^';
+            const l = sign.length +times.length + exponent.length;
+            return `${sign}${mantissa.slice(0,max_length-l)}${times}${exponent}`;
+        }
+    } catch(e) {
+        return (new CalculationError(e))+'';
     }
 } 
 
@@ -102,10 +117,11 @@ class Op extends Item {
     return new Op(this.op,this.args.map(x=>x.copy()));
   }
   get value() {
-    return fns[this.op.op](...this.args.map(x=>x.value));
-  }
-  display() {
-    return nice_number(this.value);
+    try {
+        return fns[this.op.op](...this.args.map(x=>x.value));
+    } catch(e) {
+        return new CalculationError(e);
+    }
   }
   toString() {
     const args = this.args.join(',');
@@ -153,13 +169,19 @@ Vue.component('touch-button', {
 
 Vue.component('item-number', {
     props: ['value'],
+    computed: {
+        has_error: function() {
+            return this.value instanceof CalculationError;
+        }
+    },
     methods: {
       display: function() {
+        const value = this.value;
         return nice_number(this.value);
       }
     },
     template: `
-  <span class="number">{{display()}}</span>
+  <span class="number" :class="{error: has_error}">{{display()}}</span>
 `,
 })
 
