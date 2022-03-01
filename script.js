@@ -489,7 +489,18 @@ const app = window.app = new Vue({
           return this.selection && this.selection.kind=='op' && this.top_stack;
       },
       can_pop: function() {
-          return this.top_stack && this.selection;
+          if(!this.selection) {
+              return false;
+          }
+          if(this.top_stack) {
+              return true;
+          }
+          const [parent_stack, parent_row] = this.parent_stacks[this.parent_stacks.length-1];
+          const parent_item = parent_stack[parent_row];
+          if(parent_item.kind == 'op' && parent_item.op.chain && this.current_stack.length>1) {
+              return true;
+          }
+          return false;
       },
       can_swap: function() {
           return this.row>0;
@@ -642,7 +653,8 @@ const app = window.app = new Vue({
         if(!this.top_stack) {
             const item = this.current_stack[this.row];
             if(item.kind == 'number') {
-                this.current_stack.splice(this.row,1,new NumberItem(val));
+                item.value = val;
+                //this.current_stack.splice(this.row,1,new NumberItem(val));
             }
         } else {
             this.push(new NumberItem(val));
@@ -714,7 +726,7 @@ const app = window.app = new Vue({
         this.new_input = this.new_input || this.input=='';
     },
     pop: function() {
-        if(!this.top_stack) {
+        if(!this.can_pop) {
             return;
         }
         this.current_stack.splice(this.row,1);
