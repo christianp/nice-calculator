@@ -213,8 +213,8 @@ Vue.component('item-op', {
               return {whole: this.value+'', frac: ''};
           }
           const s = this.value.toString(this.digits_shown);
-          const m = s.match(/(-?)(\d+)(?:\.(\d+))?/);
-          const [sign, whole, frac] = m.slice(1);
+          const m = s.match(/(-?\d+)(?:\.(\d+))?/);
+          const [whole, frac] = m.slice(1);
           const space = '     '.slice(0,(5 - (whole.length%5))%5);
           const first = whole.slice(0,whole.length % 5);
           const rest = whole.slice(whole.length % 5).replace(/(.{5})/g,' $1').trim();
