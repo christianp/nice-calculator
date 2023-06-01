@@ -1,17 +1,14 @@
 import emoji from './emoji.js';
 import CReal from './creal.js';
 
-//VueHammer.config.swipe = {
-//  threshold: 100
-//};
-Vue.use(VueHammer);
+window.CReal = CReal;
 
 class CalculationError {
     constructor(e) {
         this.error = e;
     }
     toString() {
-        return 'ERR';
+        return this.error+'';
     }
 }
 
@@ -154,19 +151,17 @@ class Op extends Item {
 Op.prototype.kind = 'op';
 
 Vue.component('touch-button', {
-  methods: {
-    prevent_mouse: function(e) {
-      e.preventDefault();
+    methods: {
+        click: function(e) {
+            this.$emit('click',e);
+            e.preventDefault();
+            this.$el.focus();
+            if(!this.$el.disabled) {
+                window.navigator.vibrate([30]);
+            }
+        }
     },
-    click: function(e) {
-      this.$emit('click',e);
-      this.$el.focus();
-      if(!this.$el.disabled) {
-        window.navigator.vibrate(30);
-      }
-    }
-  },
-  template: `<button @touchstart="prevent_mouse" v-hammer:tap="click"><slot></slot></button>`
+    template: `<button @click="click"><slot></slot></button>`
 })
 
 Vue.component('item-number', {
@@ -387,10 +382,10 @@ function bracket_postfix(symbol) {
 }
 
 const ops = [
-    {op: 'add', 'label': '+', 'key': '+', arity: 2, fn: sum, screen: 'main', chain: true, precedence: 1, symbol: '+'},
-    {op: 'sub', 'label': '-', 'key': '-', arity: 2, fn: (a,b) => a.subtract(b), screen: 'main', precedence: 1, symbol: '-'},
     {op: 'mul', 'label': '×', 'key': '*', arity: 2, fn: product, screen: 'main', chain: true, precedence: 2, symbol: '×'},
     {op: 'div', 'label': '÷', 'key': '/', arity: 2, fn: (a,b) => a.divide(b), screen: 'main', precedence: 2, symbol: '÷'},
+    {op: 'add', 'label': '+', 'key': '+', arity: 2, fn: sum, screen: 'main', chain: true, precedence: 1, symbol: '+'},
+    {op: 'sub', 'label': '-', 'key': '-', arity: 2, fn: (a,b) => a.subtract(b), screen: 'main', precedence: 1, symbol: '-'},
     {op: 'sin', 'label': 'Sin', 'key': 's', arity: 1, fn: a => a.sin(), area: 'num-7', screen: 'trig'},
     {op: 'cos', 'label': 'Cos', 'key': 'c', arity: 1, fn: a => a.cos(), area: 'num-8', screen: 'trig'},
     {op: 'tan', 'label': 'Tan', 'key': 't', arity: 1, fn: a => a.sin().divide(a.cos()), area: 'num-9', screen: 'trig'},
@@ -432,6 +427,7 @@ class CustomOp {
     this.kind = 'unary';
     this.symbol = '';
     this.valid = false;
+    this.fn = a => a;
   }
   
   op_object() {
@@ -441,7 +437,7 @@ class CustomOp {
       op: this.op, 
       'label': symbol, 
       arity: arity,
-      fn: this.fn,
+      fn: () => this.fn,
       screen: 'custom',
       symbol: symbol
     };  
@@ -484,6 +480,9 @@ const app = window.app = new Vue({
       },
       screen: function() {
           return this.screens[this.screen_index];
+      },
+      can_copy: function() {
+          return this.can_pop;
       },
       can_undo: function() {
           return this.selection && this.selection.kind=='op' && this.top_stack;
@@ -533,10 +532,7 @@ const app = window.app = new Vue({
     
       editor_fn: function() {
         let fn;
-        let code = this.edit_op.code;
-        if(!code.match(/\n/)) {
-          code = `return ${code}`;
-        }
+        let code = this.edit_op.code.trim();
         try {
           switch(this.edit_op.kind) {
             case 'unary':
@@ -546,7 +542,7 @@ const app = window.app = new Vue({
               fn = new Function('a','b',code);
               break;
             case 'constant':
-              fn = new Function(this.code);
+              fn = new Function(code);
               break;
           }
           this.editor_warning = '';
@@ -570,6 +566,10 @@ const app = window.app = new Vue({
           }
         }
         return Array.from(items);
+      },
+
+      has_custom_ops: function() {
+          return this.custom_ops.some(o => o.valid);
       }
   },
   watch: {
@@ -595,8 +595,19 @@ const app = window.app = new Vue({
           this.edit_op.valid = false;
           return;
         }
-        this.edit_op.valid = this.editor_fn!==null;
-        this.edit_op.fn = this.editor_fn;
+
+        this.edit_op.valid = this.editor_fn !== null;
+
+        const fn = this.editor_fn;
+
+        this.edit_op.fn = (a,b) => { 
+            const r = fn(a,b); 
+            if(r===undefined) {
+                throw(new Error("This function didn't return anything."));
+            }; 
+            return r;
+        };
+
         fns[this.edit_op.op] = this.edit_op.fn;
       }
   },
@@ -745,7 +756,6 @@ const app = window.app = new Vue({
     },
     show_more_digits: function() {
         const item = this.current_stack[this.row];
-        console.log(item);
         if(item.kind == 'op') {
             item.show_more_digits = !item.show_more_digits;
         }
@@ -773,7 +783,6 @@ const app = window.app = new Vue({
       this.mode = 'editor';
     },
     set_edit_op: function(op) {
-      console.log(arguments);
       this.edit_op = op;
     },
     
@@ -819,16 +828,6 @@ const app = window.app = new Vue({
     previous_screen: function() {
         this.screen_index = (this.screen_index+this.screens.length-1) % this.screens.length;
     },
-    swipe: function(e) {
-      switch(e.direction) {
-        case Hammer.DIRECTION_LEFT:
-          this.previous_screen();
-          break;
-        case Hammer.DIRECTION_RIGHT:
-          this.next_screen();
-          break;
-      }
-    },
     delete: function() {
         if(this.new_input) {
             this.pop();
@@ -869,7 +868,6 @@ const app = window.app = new Vue({
                   'Enter': e => this.add_number(),
                   'Delete': e => this.delete(),
                   'Backspace': e => this.backspace(),
-                  'Tab': e => this.next_screen(),
                   'u': e => this.undo(),
                   'd': e => this.copy(),
                   'w': e => this.swap(),
