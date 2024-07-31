@@ -5,8 +5,8 @@
     <script src="vue.js"></script>
     <script src="hammer.js"></script>
     <script src="vue-hammer.js"></script>
-    <script src="script.js" type="module"></script>
-    <link rel="stylesheet" href="style.css"></link>
+    <script type="module" src="script.js?202407311605"></script>
+    <link rel="stylesheet" href="style.css?202407311224"></link>
     <link rel="manifest" href="manifest.json?202306078">
     <meta charset="UTF-8">
     <meta name="viewport" content="width-device-width,initial-scale=1.0">
@@ -14,7 +14,7 @@
   <body>
     <div id="app">
       <a href="help.html" target="help" id="help-link" v-if="mode=='calculator'">Help!</a>
-      <div class="calculator" v-if="mode=='calculator'" :class="['screen-'+screen]">
+      <div class="calculator" v-if="mode=='calculator'">
           <item-stack :items="stack" :depth="0" :path="[]" :selection_path="path" @click-item="click_item"></item-stack>
           <span class="input" type="text" :class="{'new': new_input}">{{input}}</span>
           <touch-button @click="backspace" class="backspace" title="Backspace">⌫</touch-button>
@@ -25,23 +25,24 @@
               <touch-button class="undo" @click="undo" :disabled="!can_undo" title="u">Undo</touch-button>
               <div class="screens">
                   <section class="screen main">
-                      <touch-button class="digit" v-for="n in [0,1,2,3,4,5,6,7,8,9]" @click="digit(n)" :style="{'grid-area':'num-'+n}" data-screen="main" :title="n">{{n}}</touch-button>
-                      <touch-button class="dot digit" data-screen="main" @click="dot" title=".">.</touch-button>
-                      <touch-button class="sign digit" data-screen="main" @click="sign" title="`">±</touch-button>
-                      <touch-button v-for="constant in constants" class="constant" @click="add_constant(constant)" :style="{'grid-area': constant.area || 'constant-'+constant.name}" :data-screen="constant.screen" :title="constant.key">{{constant.label}}</touch-button>
-                      <touch-button v-for="op in ops" v-if="op.screen == 'main'" class="op" @click="add_op(op)" :disabled="!can_op(op)" :style="{'grid-area': op.area || 'op-'+op.op}" :data-screen="op.screen" :title="op.key">{{op.label}}</touch-button>
+                      <touch-button class="digit" v-for="n in [0,1,2,3,4,5,6,7,8,9]" @click="digit(n)" :style="{'grid-area':'num-'+n}"  :title="n">{{n}}</touch-button>
+                      <touch-button class="dot digit"  @click="dot" title=".">.</touch-button>
+                      <touch-button class="sign digit"  @click="sign" title="`">±</touch-button>
+                      <touch-button v-for="constant in constants" class="constant" @click="add_constant(constant)" :style="{'grid-area': constant.area || 'constant-'+constant.name}"  :title="constant.key">{{constant.label}}</touch-button>
+                      <touch-button v-for="op in ops" v-if="op.screen == 'main'" class="op" @click="add_op(op)" :disabled="!can_op(op)" :style="{'grid-area': op.area || 'op-'+op.op}"  :title="op.key">{{op.label}}</touch-button>
                       <touch-button @click="add_number" class="push" title="Enter">Enter</touch-button>
                   </section>
                   <section class="screen trig">
-                      <touch-button v-for="op in ops" class="op" @click="add_op(op)" :disabled="!can_op(op)" :style="{'grid-area': op.area || 'op-'+op.op}" :data-screen="op.screen" :title="op.key">{{op.label}}</touch-button>
+                      <touch-button v-for="op in ops" v-if="op.screen == 'trig'" class="op" @click="add_op(op)" :disabled="!can_op(op)" :style="{'grid-area': op.area || 'op-'+op.op}"  :title="op.key">{{op.label}}</touch-button>
                   </section>
                   <section class="screen named">
-                      <touch-button v-for="item in named_items" class="named-item" data-screen="named" @click="add_named_item(item)" >{{item.label}}</touch-button>
+                      <touch-button class="edit-named" @click="edit_named">✎</touch-button>
+                      <touch-button v-for="item in sorted_named_items" class="named-item"  @click="add_named_item(item)" >{{item.label}}</touch-button>
                       <div class="nothing-here" v-if="named_items.length==0">Named items will go here</div>
                   </section>
                   <section class="screen custom">
                       <touch-button class="add-custom" @click="edit_custom">✎</touch-button>
-                      <touch-button v-for="custom in custom_ops" class="custom-op" v-if="custom.valid" :disabled="!can_custom(custom)" data-screen="custom" @click="add_custom(custom)" :style="{'grid-area': custom.position}">{{custom.symbol}}</touch-button>
+                      <touch-button v-for="custom in custom_ops" class="custom-op" v-if="custom.valid" :disabled="!can_custom(custom)"  @click="add_custom(custom)" :style="{'grid-area': custom.position}">{{custom.symbol}}</touch-button>
                       <div class="nothing-here" v-if="!has_custom_ops">Custom ops will go here</div>
                   </section>
               </div>
@@ -50,6 +51,16 @@
               <touch-button class="left" @click="left" title="Left">⬅</touch-button>
               <touch-button class="right" @click="right" title="Right">➡</touch-button>
           </div>
+      </div>
+      <div class="calculator item-search" v-if="mode=='pick_named_item'">
+          <item-stack :items="stack" :depth="0" :path="[]" :selection_path="path" @click-item="click_item"></item-stack>
+          <touch-button class="back-to-calculator" @click="escape">←</touch-button>
+          <input class="search" type="search" v-model="typed_item_name" v-focus>
+          <ul class="matching-items">
+              <li v-for="item in searched_named_items">
+                  <touch-button class="item named-item"  @click="pick_matching_named_item(item)" :kind="item.kind">{{item.label}}</touch-button>
+              </li>
+          </ul>
       </div>
       <div class="editor" v-if="mode=='editor'">
         <label class="symbol-label" for="editor-symbol">Symbol</label>
@@ -65,6 +76,19 @@
         <textarea v-model="edit_op.code" class="code" id="editor-code"></textarea>
         <touch-button class="back-to-calculator" @click="escape">←</touch-button>
         <touch-button v-for="op in custom_ops" class="editable-op" :class="{'current': edit_op==op}" @click="set_edit_op(op)">{{op.symbol}}</touch-button>
+        <p class="help-link">Arguments are CReal values. See <a href="https://christianp.github.io/creal.js/">the CReal.js documentation</a>.</p>
+      </div>
+      <div class="named-editor" v-if="mode=='named'">
+          <touch-button class="back-to-calculator" @click="escape">← Back to the calculator</touch-button>
+          <dl>
+              <template v-for="item in sorted_named_items">
+                  <dt class="name" :data-kind="item.kind">{{item.label}} <small v-if="item.kind == 'op'" class="notation">= {{item.toNotation()}}</small></dt>
+                  <dd class="value">
+                     <named-item-editor v-if="item.kind == 'number'" :item="item"></named-item-editor>
+                     <standalone-op-result v-if="item.kind != 'number'" :value="item.value"></op-result>
+                  </dd>
+              </template>
+          </dl>
       </div>
     </div>
   </body>

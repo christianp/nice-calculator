@@ -71,25 +71,85 @@
                 If you have a keyboard, you can type numbers and operations.
                 There are also keys for most of the other on-screen buttons.
             </p>
+
+            <h3>Moving around the interface</h3>
+            <table>
+                <thead>
+                    <tr>
+                        <th>Key</th>
+                        <th>Action</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <tr>
+                        <td><kbd>↑</kbd></td>
+                        <td>Select the previous item.</td>
+                    </tr>
+                    <tr>
+                        <td><kbd>↓</kbd></td>
+                        <td>Select the next item.</td>
+                    </tr>
+                    <tr>
+                        <td><kbd>←</kbd></td>
+                        <td>Select the operator above this item.</td>
+                    </tr>
+                    <tr>
+                        <td><kbd>→</kbd></td>
+                        <td>Select this item's first argument.</td>
+                    </tr>
+                    <tr>
+                        <td><kbd>Shift</kbd> <kbd>↑</kbd></td>
+                        <td>Switch to the previous screen of buttons.</td>
+                    </tr>
+                    <tr>
+                        <td><kbd>Shift</kbd> <kbd>↓</kbd></td>
+                        <td>Switch to the next screen of buttons.</td>
+                    </tr>
+                    <tr>
+                        <td><kbd>v</kbd></td>
+                        <td>Show the named item editor.</td>
+                    </tr>
+                    <tr>
+                        <td><kbd>@</kbd></td>
+                        <td>
+                            <p>Search for a named item. Type the item's name. As soon as there's only one named item matching what you've typed, it's pushed to the stack.</p>
+                            <p>For example, if you have items named <code>root</code> and <code>x</code>, then typing <kbd>@</kbd> <kbd>r</kbd> will push <code>root</code> to the stack.</p>
+                        </td>
+                    </tr>
+                    <tr>
+                        <td><kbd>Escape</kbd></td>
+                        <td>
+                            <p>If in the custom function or named value editors, return to the calculator screen.</p>
+                            <p>If editing the name of an item, stop editing it.</p>
+                        </td>
+                    </tr>
+                </tbody>
+            </table>
+
             <h3>Manipulating the stack</h3>
             <table>
                 <thead>
                     <tr>
                         <th>Key</th>
                         <th>Command</th>
-                        <th></th>
+                        <th>Action</th>
                     </tr>
                 </thead>
                 <tbody>
                     <tr>
-                        <td><kbd>`</kbd></td>
-                        <td>Sign</td>
-                        <td>Change the sign of the number being entered.</td>
+                        <td><kbd>Enter</kbd></td>
+                        <td>Enter</td>
+                        <td>Push the number in the input to the stack, below the selected item.</td>
                     </tr>
                     <tr>
-                        <td><kbd>Tab</kbd></td>
-                        <td>Shift</td>
-                        <td>Switch to the next screen of buttons.</td>
+                        <td><kbd>⌫</kbd></td>
+                        <td>Backspace</td>
+                        <td>Delete the last character of the input.</td>
+                    </tr>
+                    <tr>
+                        <td><kbd>`</kbd></td>
+                        <td>±</td>
+                        <td>Change the sign of the number being entered.</td>
                     </tr>
                     <tr>
                         <td><kbd>Delete</kbd></td>
@@ -116,6 +176,11 @@
                         <td>Show more digits</td>
                         <td>When you've selected an operation, expand the result to show more digits. More digits are shown as you scroll down.</td>
                     </tr>
+                    <tr>
+                        <td><kbd>n</kbd></td>
+                        <td>Name</td>
+                        <td>Focus the input to change the name of the selected item.</td>
+                    </tr>
                 </tbody>
             </table>
 
@@ -131,75 +196,78 @@
                 <tbody>
                     <tr>
                         <td><kbd>+</kbd></td>
-                        <td>x + y</td>
+                        <td><math><mi>x</mi> <mo>+</mo> <mi>y</mi></math></td>
                     </tr>
                     <tr>
                         <td><kbd>-</kbd></td>
-                        <td>x - y</td>
+                        <td><math><mi>x</mi> <mo>-</mo> <mi>y</mi></math></td>
                     </tr>
                     <tr>
                         <td><kbd>*</kbd></td>
-                        <td>x × y</td>
+                        <td><math><mi>x</mi> <mo>×</mo> <mi>y</mi></math></td>
                     </tr>
                     <tr>
                         <td><kbd>/</kbd></td>
-                        <td>x ÷ y</td>
+                        <td><math><mi>x</mi> <mo>÷</mo> <mi>y</mi></math></td>
                     </tr>
                     <tr>
                         <td><kbd>s</kbd></td>
-                        <td>sin(x)</td>
+                        <td><math><mo>sin</mo><mrow><mo>(</mo><mi>x</mi><mo>)</mo></mrow></math></td>
                     </tr>
                     <tr>
                         <td><kbd>c</kbd></td>
-                        <td>cos(x)</td>
+                        <td><math><mo>cos</mo><mrow><mo>(</mo><mi>x</mi><mo>)</mo></mrow></math></td>
+                    </tr>
                     </tr>
                     <tr>
                         <td><kbd>t</kbd></td>
-                        <td>tan(x)</td>
+                        <td><math><mo>tan</mo><mrow><mo>(</mo><mi>x</mi><mo>)</mo></mrow></math></td>
+                    </tr>
                     </tr>
                     <tr>
                         <td><kbd>S</kbd></td>
-                        <td>sin⁻¹(x)</td>
+                        <td><math><msup><mo>sin</mo><mrow><mo>-</mo><mn>1</mn></mrow></msup><mrow><mo>(</mo><mi>x</mi><mo>)</mo></mrow></math></td>
+                    </tr>
                     </tr>
                     <tr>
                         <td><kbd>C</kbd></td>
-                        <td>cos⁻¹(x)</td>
+                        <td><math><msup><mo>cos</mo><mrow><mo>-</mo><mn>1</mn></mrow></msup><mrow><mo>(</mo><mi>x</mi><mo>)</mo></mrow></math></td>
                     </tr>
                     <tr>
                         <td><kbd>T</kbd></td>
-                        <td>tan⁻¹(x)</td>
+                        <td><math><msup><mo>tan</mo><mrow><mo>-</mo><mn>1</mn></mrow></msup><mrow><mo>(</mo><mi>x</mi><mo>)</mo></mrow></math></td>
                     </tr>
                     <tr>
                         <td><kbd>^</kbd></td>
-                        <td>x²</td>
+                        <td><math><msup><mi>x</mi><mn>2</mn></msup></math></td>
                     </tr>
                     <tr>
                         <td><kbd>r</kbd></td>
-                        <td>√x</td>
+                        <td><math><msqrt><mi>x</mi></msqrt></math></td>
                     </tr>
                     <tr>
                         <td><kbd>p</kbd></td>
-                        <td>xʸ</td>
+                        <td><math><msup><mi>x</mi><mi>y</mi></msup></math></td>
                     </tr>
                     <tr>
                         <td><kbd>l</kbd></td>
-                        <td>ln(x)</td>
+                        <td><math><mo>ln</mo><mrow><mo>(</mo><mi>x</mi><mo>)</mo></mrow></math></td>
                     </tr>
                     <tr>
                         <td><kbd>L</kbd></td>
-                        <td>log(x)</td>
+                        <td><math><mo>log</mo><mrow><mo>(</mo><mi>x</mi><mo>)</mo></mrow></math></td>
                     </tr>
                     <tr>
                         <td><kbd>e</kbd></td>
-                        <td>eˣ</td>
+                        <td><math><msup><mi>e</mi><mi>x</mi></msup></math></td>
                     </tr>
                     <tr>
                         <td><kbd>E</kbd></td>
-                        <td>10ˣ</td>
+                        <td><math><msup><mn>10</mn><mi>x</mi></msup></math></td>
                     </tr>
                     <tr>
                         <td><kbd>!</kbd></td>
-                        <td>x!</td>
+                        <td><math><mi>x</mi><mo>!</mo></math></td>
                     </tr>
                     <tr>
                         <td><kbd>m</kbd></td>
@@ -213,7 +281,7 @@
                     </tr>
                     <tr>
                         <td><kbd>P</kbd></td>
-                        <td>π</td>
+                        <td><math><mn>π</mn></math></td>
                         <td>Add the constant π to the stack</td>
                     </tr>
                 </tbody>

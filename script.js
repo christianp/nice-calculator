@@ -12,6 +12,10 @@ class CalculationError {
     }
 }
 
+function remove_trailing_zeros(s) {
+    return s.replace(/\.?0*$/, '');
+}
+
 function choice(list) {
   const n = Math.floor(Math.random()*list.length);
   return list[n];
@@ -22,6 +26,10 @@ class Item {
   constructor() {
     this.id = idacc++;
     this.label = '';
+  }
+
+  toSerialisedString() {
+      return this.toString();
   }
 }
 
@@ -58,29 +66,40 @@ function nice_number(n, max_length = 10) {
 const used_labels = {};
 
 class NumberItem extends Item {
-  constructor(value) {
-    super();
-    this.value = value;
-  }
-  copy() {
-    if(!this.label) {
-      const available_emoji = emoji.filter(x=>!(x in used_labels));
-      const label = choice(available_emoji);
-      this.label = label;
-      used_labels[label] = true;
+    constructor(value) {
+        super();
+        this.value = value;
     }
-    return this;
-  }
-  toString() {
-    let s = nice_number(this.value);
-    if(this.label) {
-      s += ',$'+this.label;
+
+    copy() {
+        if(!this.label) {
+            const available_emoji = emoji.filter(x=>!(x in used_labels));
+            const label = choice(available_emoji);
+            this.label = label;
+            used_labels[label] = true;
+        }
+        return this;
     }
-    return s;
-  }
-  toNotation() {
-    return (this.label || nice_number(this.value))+'';
-  }
+
+    toString() {
+        let s = nice_number(this.value);
+        if(this.label) {
+            s += ',$'+this.label;
+        }
+        return s;
+    }
+
+    toSerialisedString() {
+        let s = remove_trailing_zeros(this.value.toString());
+        if(this.label) {
+            s += ',$'+this.label;
+        }
+        return s;
+    }
+
+    toNotation() {
+        return (this.label || nice_number(this.value))+'';
+    }
 }
 NumberItem.prototype.kind = 'number';
 
@@ -117,6 +136,7 @@ class Op extends Item {
     try {
         return fns[this.op.op](...this.args.map(x=>x.value));
     } catch(e) {
+        console.error(e);
         return new CalculationError(e);
     }
   }
@@ -128,8 +148,28 @@ class Op extends Item {
         op += ','+this.op.op;
       }
     }
-    return args+','+op;
+    let s = args+','+op;
+    if(this.label) {
+      s += ',$'+this.label;
+    }
+    return s;
   }
+
+  toSerialisedString() {
+    const args = this.args.map(arg => arg.toSerialisedString()).join(',');
+    let op = this.op.op;
+    if(this.op.chain) {
+      for(let i=this.op.arity;i<this.args.length;i++) {
+        op += ','+this.op.op;
+      }
+    }
+    let s = args+','+op;
+    if(this.label) {
+      s += ',$'+this.label;
+    }
+    return s;
+  }
+
   toNotation() {
     if(this.op.toNotation) {
         return this.op.toNotation(this.args);
@@ -151,6 +191,7 @@ class Op extends Item {
 Op.prototype.kind = 'op';
 
 Vue.component('touch-button', {
+    props: ['kind'],
     methods: {
         click: function(e) {
             this.$emit('click',e);
@@ -161,14 +202,23 @@ Vue.component('touch-button', {
             }
         }
     },
-    template: `<button @click="click"><slot></slot></button>`
+    template: `<button :data-kind="kind" @click="click"><slot></slot></button>`
 })
 
 Vue.component('item-number', {
     props: ['value'],
     computed: {
         has_error: function() {
-            return this.value instanceof CalculationError;
+            if(this.value instanceof CalculationError) {
+                return true;
+            }
+
+            try {
+                this.value.toString();
+                return false;
+            } catch(e) {
+                return true;
+            }
         }
     },
     methods: {
@@ -178,16 +228,15 @@ Vue.component('item-number', {
       }
     },
     template: `
-  <span class="number" :class="{error: has_error}">{{display()}}</span>
-`,
+        <span data-kind="number" class="number" :class="{error: has_error}">{{display()}}</span>
+    `,
 })
 
 Vue.component('item-op', {
     props: ['op','args','value','depth','path','selection_path', 'value_collapsed'],
     data: function() {
         return {
-            args_collapsed: this.depth>0,
-            digits_shown : 500
+            args_collapsed: this.depth > 0,
         }
     },
     watch: {
@@ -202,6 +251,36 @@ Vue.component('item-op', {
         }
       }
     },
+    methods: {
+        click_item: function(path) {
+            this.$emit('click-item',path)
+        },
+        collapse_args: function() {
+            this.args_collapsed = !this.args_collapsed;
+        },
+        display: function() {
+            return nice_number(this.value);
+        },
+    },
+    template: `
+        <div data-kind="op" class="op" :class="{'args-collapsed': args_collapsed, 'value-collapsed': value_collapsed}">
+            <item-stack v-if="!args_collapsed" :items="args" :depth="depth+1" :path="path" :selection_path="selection_path" @click-item="click_item"></item-stack>
+            <div class="symbol" v-if="!args_collapsed" @click="collapse_args">{{op.label}}</div>
+            <div class="show-collapsed" v-if="args_collapsed" @click="collapse_args">...</div>
+            <op-result :value="value" :value_collapsed="value_collapsed"></op-result>
+        </div>
+    `
+})
+
+Vue.component('op-result', {
+    props: ['value', 'value_collapsed'],
+
+    data: function() {
+        return {
+            digits_shown : 500,
+        }
+    },
+
     computed: {
       more_digits: function() {
           if(this.value instanceof CalculationError) {
@@ -217,18 +296,13 @@ Vue.component('item-op', {
           return {whole: spaced_whole, frac: frac.replace(/(.{5})/g,'$1 ').trim()};
       }
     },
+
     methods: {
-        click_item: function(path) {
-            this.$emit('click-item',path)
-        },
-        collapse_args: function() {
-            this.args_collapsed = !this.args_collapsed;
-        },
-        collapse_values: function() {
-            this.value_collapsed = !this.value_collapsed;
-        },
-        display: function() {
-            return nice_number(this.value);
+        tap: function() {
+            if(window.getSelection().type == 'Range') {
+                return;
+            }
+            this.$emit('collapse_values')
         },
         scroll_more_digits: function(e) {
             const p = e.target;
@@ -236,25 +310,31 @@ Vue.component('item-op', {
                 this.digits_shown += 500;
             }
         },
-        tap: function() {
-            if(window.getSelection().type == 'Range') {
-                return;
-            }
-            this.$emit('collapse_values')
+    },
+    template: `
+        <div class="result" @click="tap" tabindex="" role="group">
+            <item-number v-if="value_collapsed" :value="value"></item-number>
+            <pre class="more-digits" v-if="!value_collapsed" @scroll="scroll_more_digits"><span class="whole">{{more_digits.whole}}</span><span v-if="more_digits.frac">.</span><span class="frac" v-if="more_digits.frac">{{more_digits.frac}}</span></pre>
+        </div>
+    `
+});
+
+Vue.component('standalone-op-result', {
+    props: ['value'],
+    data: function() {
+        return {
+            value_collapsed: true
+        }
+    },
+    methods: {
+        collapse_values: function() {
+            this.value_collapsed = !this.value_collapsed;
         }
     },
     template: `
-        <div class="op" :class="{'args=collapsed': args_collapsed, 'value-collapsed': value_collapsed}">
-            <item-stack v-if="!args_collapsed" :items="args" :depth="depth+1" :path="path" :selection_path="selection_path" @click-item="click_item"></item-stack>
-            <div class="symbol" v-if="!args_collapsed" @click="collapse_args">{{op.label}}</div>
-            <div class="show-collapsed" v-if="args_collapsed" @click="collapse_args">...</div>
-            <div class="result" @click="tap">
-                <item-number v-if="value_collapsed" :value="value"></item-number>
-                <pre class="more-digits" v-if="!value_collapsed" @scroll="scroll_more_digits"><span class="whole">{{more_digits.whole}}</span><span v-if="more_digits.frac">.</span><span class="frac" v-if="more_digits.frac">{{more_digits.frac}}</span></pre>
-            </div>
-        </div>
+        <op-result :value="value" :value_collapsed="value_collapsed" @collapse_values="collapse_values"></op-result>
     `
-})
+});
 
 Vue.component('stack-item', {
     props: ['item','depth','path','selection_path','selected'],
@@ -273,7 +353,7 @@ Vue.component('stack-item', {
             this.$emit('click-item',this.path);
         },
         collapse_values: function() {
-          this.item.show_more_digits = !this.item.show_more_digits;
+          this.item.show_more_digits = !this.item.show_more_digits && this.selected;
         }
     },
     mounted: function() {
@@ -298,14 +378,25 @@ Vue.component('stack-item', {
         }
     },
     template: `
-        <div class="item-container" @click="click">
-          <input v-if="selected && item.kind=='number' && !item.constant" class="edit-name" v-model="item.label"></input>
-          <li class="item" :class="[selected ? 'selected' : '',item.kind]">
-              <span v-if="item.constant || !selected && item.label" class="label">{{item.label}}</span>
-              <item-number v-if="item.kind=='number'" :value="item.value"></item-number>
-              <item-op v-if="item.kind=='op'" :op="item.op" :args="item.args" :value="item.value" :depth="depth" :path="path" :selection_path="selection_path" :value_collapsed="!item.show_more_digits" @click-item="click_item" @collapse_values="collapse_values"></item-op>
-          </li>
-          <span class="notation" v-if="show_notation">{{item.toNotation()}}</span>
+        <div class="item-container">
+            <li class="item" :class="[selected ? 'selected' : '',item.kind]" :data-kind="item.kind" @click="click">
+                <input :placeholder="item.toNotation()" v-if="selected && !item.constant" class="edit-name" v-model="item.label" autocapitalize="off"></input>
+                <span v-if="item.constant || !selected && item.label" class="label">{{item.label}}</span>
+                <item-number v-if="item.kind=='number'" :value="item.value"></item-number>
+                <item-op 
+                    v-if="item.kind=='op'" 
+                    :op="item.op" 
+                    :args="item.args" 
+                    :value="item.value" 
+                    :depth="depth" 
+                    :path="path" 
+                    :selection_path="selection_path" 
+                    :value_collapsed="!item.show_more_digits" 
+                    @click-item="click_item" 
+                    @collapse_values="collapse_values"
+                ></item-op>
+            </li>
+            <span class="notation" v-if="show_notation">{{item.toNotation()}}</span>
         </div>
     `
 });
@@ -331,12 +422,43 @@ Vue.component('item-stack', {
     template: `
 <div class="stack">
     <transition-group name="stack" tag="ol" class="stack-items">
-            <stack-item v-for="(item,index) in items" :key="item.id" :item="item" :depth="depth" :path="path.concat([index])" :selection_path="selection_path.length && selection_path[0]==index ? selection_path.slice(1) : []" :selected="selected && index==row" @click-item="click_item">
+            <stack-item 
+                v-for="(item,index) in items" 
+                :key="item.id" 
+                :item="item" 
+                :depth="depth" 
+                :path="path.concat([index])" 
+                :selection_path="selection_path.length && selection_path[0]==index ? selection_path.slice(1) : []" 
+                :selected="selected && index==row" 
+                @click-item="click_item"
+            >
             </stack-item>
     </transition-group>
 </div>
     `
 })
+
+Vue.component('named-item-editor', {
+    props: ['item'],
+    data: function() {
+        return {
+            string_value: remove_trailing_zeros(this.item.value.toString())
+        }
+    },
+    watch: {
+        string_value: function(e) {
+            this.item.value = CReal.valueOf(this.string_value);
+        }
+    },
+    template: `
+      <input type="number" v-model="string_value">
+    `
+});
+
+Vue.directive('focus', {
+    inserted: el => el.focus()
+});
+
 
 function factorial(n) {
     n = n.abs().BigIntValue();
@@ -423,7 +545,7 @@ class CustomOp {
   constructor(n,position) {
     this.op = `custom-${n}`;
     this.position = position;
-    this.code = '';
+    this.code = 'return a;';
     this.kind = 'unary';
     this.symbol = '';
     this.valid = false;
@@ -461,9 +583,8 @@ const app = window.app = new Vue({
     ops: ops,
     input: '',
     stack: stack,
-    screens: ['main','trig','custom','named'],
-    screen_index: 0 ,
     constants: constants,
+    typed_item_name: '',
     
     custom_ops: custom_ops,
     edit_op: custom_ops[0],
@@ -477,9 +598,6 @@ const app = window.app = new Vue({
       },
       selection: function() {
           return this.row>=0 && this.row<this.current_stack.length && this.current_stack[this.row];
-      },
-      screen: function() {
-          return this.screens[this.screen_index];
       },
       can_copy: function() {
           return this.can_pop;
@@ -516,7 +634,7 @@ const app = window.app = new Vue({
           return this.parent_stacks.length==0;
       },
       serialised: function() {
-          return this.stack.join(',');
+          return this.stack.map(item => item.toSerialisedString()).join(',');
       },
     
       editor_signature: function() {
@@ -568,6 +686,29 @@ const app = window.app = new Vue({
         return Array.from(items);
       },
 
+      sorted_named_items: function() {
+          const kinds = ['number', 'op'];
+          return this.named_items.toSorted((a,b) => {
+              const ai = kinds.indexOf(a.kind);
+              const bi = kinds.indexOf(b.kind);
+              return ai != bi ? ai-bi : a.label < b.label ? -1 : a.label > b.label ? 1 : 0;
+          });
+      },
+
+      searched_named_items: function() {
+          return this.sorted_named_items.filter(item => item.label.startsWith(this.typed_item_name));
+      },
+
+      matching_named_item: function() {
+          if(this.mode != 'pick_named_item') {
+              return;
+          }
+          if(this.searched_named_items.length != 1) {
+              return;
+          }
+          return this.searched_named_items[0];
+      },
+
       has_custom_ops: function() {
           return this.custom_ops.some(o => o.valid);
       }
@@ -609,6 +750,15 @@ const app = window.app = new Vue({
         };
 
         fns[this.edit_op.op] = this.edit_op.fn;
+      },
+
+      matching_named_item: function() {
+          if(!this.matching_named_item) {
+              return;
+          }
+          const item = this.matching_named_item;
+          this.add_named_item(item);
+          this.mode = 'calculator';
       }
   },
   methods: {
@@ -697,7 +847,6 @@ const app = window.app = new Vue({
         if(!this.new_input) {
             this.add_number();
         }
-        this.screen_index = 0;
         const arity = op.arity===Infinity ? this.row+1 : op.arity;
         const raw_args = this.current_stack.splice(this.row-(arity-1),arity);
         const args = [];
@@ -733,7 +882,7 @@ const app = window.app = new Vue({
         this.row += 1;
     },
     backspace: function() {
-        this.input = this.input.slice(0,this.input.length-1);
+        this.input = this.input.slice(0, -1);
         this.new_input = this.new_input || this.input=='';
     },
     pop: function() {
@@ -760,6 +909,12 @@ const app = window.app = new Vue({
             item.show_more_digits = !item.show_more_digits;
         }
     },
+    focus_name_input: function() {
+        const input = this.$el.querySelector('.item.selected .edit-name');
+        if(input) {
+            input.focus();
+        }
+    },
     copy: function() {
         const item = this.current_stack[this.row];
         while(this.parent_stacks.length) {
@@ -770,6 +925,7 @@ const app = window.app = new Vue({
     add_named_item(item) {
         this.push(item);
     },
+
     undo: function() {
         if(!this.can_undo) {
             return;
@@ -777,6 +933,20 @@ const app = window.app = new Vue({
         const [op] = this.current_stack.splice(this.row,1);
         this.current_stack.splice(this.row,0,...op.args);
         this.row += op.args.length-1;
+    },
+
+    edit_named: function() {
+        this.mode = 'named';
+    },
+
+    pick_named_item: function() {
+        this.mode = 'pick_named_item';
+        this.typed_item_name = '';
+    },
+
+    pick_matching_named_item: function(item) {
+        this.add_named_item(item);
+        this.mode = 'calculator';
     },
     
     edit_custom: function() {
@@ -811,8 +981,33 @@ const app = window.app = new Vue({
         }
         this.parent_stacks.push([this.current_stack,this.row]);
         this.current_stack = this.current_stack[this.row].args;
-        this.row = this.current_stack.length-1;
+        this.row = 0;
     },
+
+    scroll_to_screen: function(d) {
+        const screens_container = this.$el.querySelector('.screens');
+        const scroll = screens_container.scrollTop;
+        const screens = Array.from(screens_container.querySelectorAll('.screen'));
+        const screen = screens.find(screen => screen.offsetTop >= scroll);
+        const i = screens.indexOf(screen);
+        const ni = Math.max(0, Math.min(screens.length-1, i + d));
+
+        const to_screen = this.$el.querySelectorAll('.screens > .screen')[ni];
+        to_screen.scrollIntoView();
+        const button = to_screen.querySelector('button:not(:disabled)');
+        if(button) {
+            button.focus();
+        }
+    },
+
+    shift_up: function() {
+        this.scroll_to_screen(-1);
+    },
+
+    shift_down: function() {
+        this.scroll_to_screen(1);
+    },
+
     click_item: function(path) {
         this.parent_stacks = [];
         this.current_stack = stack;
@@ -822,12 +1017,6 @@ const app = window.app = new Vue({
         }
         this.row = path[path.length-1];
     },
-    next_screen: function() {
-        this.screen_index = (this.screen_index+1) % this.screens.length;
-    },
-    previous_screen: function() {
-        this.screen_index = (this.screen_index+this.screens.length-1) % this.screens.length;
-    },
     delete: function() {
         if(this.new_input) {
             this.pop();
@@ -836,9 +1025,28 @@ const app = window.app = new Vue({
         }
     },
     escape: function() {
-      this.mode = 'calculator';
+        if(this.mode != 'pick_named_item' && document.activeElement.tagName == 'INPUT') {
+            document.activeElement.blur();
+            return;
+        }
+
+        this.mode = 'calculator';
     },
-    keypress: function(e) {
+    handle_keypress: function(e, keys) {
+        if(keys[e.key]) {
+            keys[e.key](e);
+            e.preventDefault();
+            e.stopPropagation();
+        }
+    },
+    input_keypress: function(e) {
+        let keys = {
+          'Escape': e => this.escape(),
+          'Enter': e => this.escape(),
+        };
+        this.handle_keypress(e, keys);
+    },
+    calculator_keypress: function(e) {
         if(e.ctrlKey || e.altKey || e.metaKey) {
           return;
         }
@@ -850,8 +1058,8 @@ const app = window.app = new Vue({
               keys = Object.assign(keys,{
                   'ArrowLeft': e => this.left(),
                   'ArrowRight': e => this.right(),
-                  'ArrowUp': e => this.up(),
-                  'ArrowDown': e => this.down(),
+                  'ArrowUp': e => e.shiftKey ? this.shift_up() : this.up(),
+                  'ArrowDown': e => e.shiftKey ? this.shift_down() : this.down(),
                   '`': e => this.sign(),
                   '0': e => this.digit(0),
                   '1': e => this.digit(1),
@@ -871,7 +1079,10 @@ const app = window.app = new Vue({
                   'u': e => this.undo(),
                   'd': e => this.copy(),
                   'w': e => this.swap(),
-                  '?': e => this.show_more_digits()
+                  '?': e => this.show_more_digits(),
+                  'n': e => this.focus_name_input(),
+                  'v': e => this.edit_named(),
+                  '@': e => this.pick_named_item(),
               });
               for(let o of this.ops) {
                   keys[o.key] = e => this.add_op(o);
@@ -887,11 +1098,7 @@ const app = window.app = new Vue({
             });
             break;
         }
-        if(keys[e.key]) {
-            keys[e.key]();
-            e.preventDefault();
-            e.stopPropagation();
-        }
+        this.handle_keypress(e, keys);
     },
     playback: function(expr_string) {
       const expr = decodeURIComponent(expr_string).split(',');
@@ -917,11 +1124,15 @@ const app = window.app = new Vue({
     }
   }
 })
+
 document.body.addEventListener('keydown',function(e) {
-    if(e.target.tagName=='INPUT') {
-      return;
+    if(e.target.tagName == 'A') {
+        return;
+    } else if(e.target.tagName=='INPUT') {
+        app.input_keypress(e);
+    } else {
+        app.calculator_keypress(e);
     }
-    app.keypress(e);
 })
 
 if ('serviceWorker' in navigator) {

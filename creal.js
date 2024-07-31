@@ -190,7 +190,7 @@ class CReal {
     static TIMEOUT_DURATION = 3000;
 
     approximate(precision) {
-        throw new Error("approximate not implemented");
+        throw new Error("Approximation is not implemented for this operation");
     }
 
     /**
@@ -210,7 +210,7 @@ class CReal {
         const high = n >> 28;
         const high_shifted = n >> 29;
         if( 0 != (high ^ high_shifted) ) {
-            throw(new Error("precision overflow"));
+            throw(new Error("Precision overflow: this number can't be represented exactly"));
         }
     }
 
@@ -315,7 +315,7 @@ class CReal {
      */
     iter_msd(n) {
         let prec = 0;
-        for(let prec = 0; prec > n+30; prec = (prec*3)/2 - 16) {
+        for(let prec = 0; prec > n+30; prec = Math.floor((prec*3)/2) - 16) {
             let msd = this.msd(prec);
             if(msd != Number.MIN_SAFE_INTEGER) {
                 return msd;
@@ -515,7 +515,7 @@ class CReal {
         const big_radix = BigInt(radix);
         const msd_prec = Math.round(log2_radix * m);
         if(msd_prec > Number.MAX_SAFE_INTEGER || msd_prec < Number.MIN_SAFE_INTEGER) {
-            throw new Error("precision overflow");
+            throw(new Error("Precision overflow: this number can't be represented exactly"));
         }
         CReal.check_prec(msd_prec);
         const msd = this.iter_msd(msd_prec-2);
@@ -833,7 +833,7 @@ class CReal {
         const low_prec = -4;
         const rough_appr = this.get_appr(low_prec); // In sixteenths
         if(rough_appr < 0n) {
-            throw new Error("ln(negative)");
+            throw new Error("Logarithm of a negative number");
         }
         if(rough_appr <= CReal.low_ln_limit) {
             return this.inverse().ln().negate();
@@ -1488,7 +1488,7 @@ class sqrt_CReal extends CReal {
             const scaled_bi_appr = this.op.get_appr(op_prec) << BigInt(sqrt_CReal.fp_op_prec);
             const scaled_appr = Number(scaled_bi_appr);
             if(scaled_appr < 0) {
-                throw new Error("sqrt(negative)");
+                throw new Error("Square root of a negative number");
             }
             const scaled_fp_sqrt = Math.sqrt(scaled_appr);
             const scaled_sqrt = BigInt(scaled_fp_sqrt);

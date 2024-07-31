@@ -26,6 +26,13 @@ th, td {
     padding: 0.5em;
 }
 
+td p {
+    margin-top: 0;
+}
+td:first-child {
+    white-space: nowrap;
+}
+
 tr ~ tr td {
     border-top: 1px dashed black;
 }
@@ -33,6 +40,6 @@ kbd {
     background: #ddd;
     padding: 0.2em 0.5em;
     border-radius: 0.2em;
-    margin: 0.1em;
+    margin: 0.1em 0;
     display: inline-block;
 }
