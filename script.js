@@ -171,12 +171,15 @@ class Op extends Item {
   }
 
   toNotation() {
+    if(this.label) {
+      return this.label;
+    }
     if(this.op.toNotation) {
         return this.op.toNotation(this.args);
     } else if(this.op.precedence) {
       const args = this.args.map(arg=>{
         const argn = arg.toNotation();
-        if(arg instanceof Op && (arg.op.precedence<this.op.precedence || (arg.op.precedence==this.op.precedence && arg.op.symbol!=this.op.symbol))) {
+        if(!arg.label && arg instanceof Op && (arg.op.precedence<this.op.precedence || (arg.op.precedence==this.op.precedence && arg.op.symbol!=this.op.symbol))) {
           return `(${argn})`;
         } else {
           return argn;
@@ -990,7 +993,7 @@ const app = window.app = new Vue({
         const screens = Array.from(screens_container.querySelectorAll('.screen'));
         const screen = screens.find(screen => screen.offsetTop >= scroll);
         const i = screens.indexOf(screen);
-        const ni = Math.max(0, Math.min(screens.length-1, i + d));
+        const ni = (i + d + screens.length) % screens.length;
 
         const to_screen = this.$el.querySelectorAll('.screens > .screen')[ni];
         to_screen.scrollIntoView();

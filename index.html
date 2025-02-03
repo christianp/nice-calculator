@@ -19,6 +19,7 @@
           <span class="input" type="text" :class="{'new': new_input}">{{input}}</span>
           <touch-button @click="backspace" class="backspace" title="Backspace">⌫</touch-button>
           <div class="buttons">
+              <touch-button class="next-screen" @click="shift_down" title="Shift+ArrowDown">↓</touch-button>
               <touch-button class="pop" @click="pop" :disabled="!can_pop" title="Delete">Drop</touch-button>
               <touch-button class="swap" @click="swap" :disabled="!can_swap" title="w">Swap</touch-button>
               <touch-button class="copy" @click="copy" :disabled="!can_copy" title="d">Copy</touch-button>
