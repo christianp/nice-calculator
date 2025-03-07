@@ -201,7 +201,9 @@ Vue.component('touch-button', {
             e.preventDefault();
             this.$el.focus();
             if(!this.$el.disabled) {
-                window.navigator.vibrate([30]);
+                if(window.navigator.vibrate) {
+                    window.navigator.vibrate([30]);
+                }
             }
         }
     },
