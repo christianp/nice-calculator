@@ -141,6 +141,8 @@ class Op extends Item {
     }
   }
   toString() {
+    return this.value.toString();
+
     const args = this.args.join(',');
     let op = this.op.op;
     if(this.op.chain) {
@@ -532,6 +534,7 @@ const ops = [
     {op: 'mean', 'label': 'Mean', 'key': 'm', arity: Infinity, fn: mean, area: 'num-1', screen: 'trig'},
     {op: 'mod', 'label': 'Mod', 'key': '%', arity: 2, fn: (a,b) => CReal.valueOf(a.BigIntValue() % b.BigIntValue()), area: 'num-2', screen: 'trig'},
 ];
+const op_dict = Object.fromEntries(ops.map(op => [op.op, op]));
 
 const constants = [
     {name: 'pi', value: CReal.PI, label: 'π', screen: 'main', key: 'P'},
@@ -571,583 +574,124 @@ class CustomOp {
   }
 }
 
-const custom_op_positions = "num-8 num-9 constant-pi constant-e num-4 num-5 num-6 op-mul op-div num-1 num-2 num-3 op-add op-sub num-0 sign dot push push".split(' ');
+class VariableAssignment {
+    constructor(name, n) {
+        this.name = name;
+        this.n = n;
+    }
 
-const custom_ops = [];
-custom_op_positions.forEach((location,i) => {
-  custom_ops.push(new CustomOp(i,location));
-})
-const app = window.app = new Vue({
-  el: '#app',
-  data: {
-    mode: 'calculator',
-    row: -1,
-    current_stack: stack,
-    parent_stacks: [],
-    new_input: true,
-    ops: ops,
-    input: '',
-    stack: stack,
-    constants: constants,
-    typed_item_name: '',
-    
-    custom_ops: custom_ops,
-    edit_op: custom_ops[0],
-    editor_warning: ''
-  },
-  computed: {
-      path: function() {
-          const p = this.parent_stacks.map(s=>s[1]);
-          p.push(this.row);
-          return p;
-      },
-      selection: function() {
-          return this.row>=0 && this.row<this.current_stack.length && this.current_stack[this.row];
-      },
-      can_copy: function() {
-          return this.can_pop;
-      },
-      can_undo: function() {
-          return this.selection && this.selection.kind=='op' && this.top_stack;
-      },
-      can_pop: function() {
-          if(!this.selection) {
-              return false;
-          }
-          if(this.top_stack) {
-              return true;
-          }
-          const [parent_stack, parent_row] = this.parent_stacks[this.parent_stacks.length-1];
-          const parent_item = parent_stack[parent_row];
-          if(parent_item.kind == 'op' && parent_item.op.chain && this.current_stack.length>1) {
-              return true;
-          }
-          return false;
-      },
-      can_swap: function() {
-          return this.row>0;
-      },
-      title: function() {
-          const main = "CLP's Nice Calculator";
-          if(this.selection) {
-              return `${nice_number(this.selection.value)} - ${main}`;
-          } else {
-              return main;
-          }
-      },
-      top_stack: function() {
-          return this.parent_stacks.length==0;
-      },
-      serialised: function() {
-          return this.stack.map(item => item.toSerialisedString()).join(',');
-      },
-    
-      editor_signature: function() {
-        switch(this.edit_op.kind) {
-          case 'unary':
-            return '(a) =>';
-          case 'binary':
-            return '(a,b) =>';
-          case 'constant':
-            return '() =>';
-        }
-      },
-    
-      editor_fn: function() {
-        let fn;
-        let code = this.edit_op.code.trim();
-        try {
-          switch(this.edit_op.kind) {
-            case 'unary':
-              fn = new Function('a',code);
-              break;
-            case 'binary':
-              fn = new Function('a','b',code);
-              break;
-            case 'constant':
-              fn = new Function(code);
-              break;
-          }
-          this.editor_warning = '';
-        } catch(e) {
-          this.editor_warning = e.message;
-          return null;
-        }
-        return fn;
-      },
-    
-      named_items: function() {
-        let look = this.stack.slice();
-        const items = new Set();
-        while(look.length) {
-          const item = look.pop();
-          if(item.label) {
-            items.add(item);
-          }
-          if(item.args) {
-            look = look.concat(item.args);
-          }
-        }
-        return Array.from(items);
-      },
+    toString() {
+        return ''.padStart(this.n, ':') + this.name;
+    }
+}
 
-      sorted_named_items: function() {
-          const kinds = ['number', 'op'];
-          return this.named_items.toSorted((a,b) => {
-              const ai = kinds.indexOf(a.kind);
-              const bi = kinds.indexOf(b.kind);
-              return ai != bi ? ai-bi : a.label < b.label ? -1 : a.label > b.label ? 1 : 0;
-          });
-      },
+class OpReference {
+    constructor(name) {
+        this.name = name;
+    }
 
-      searched_named_items: function() {
-          return this.sorted_named_items.filter(item => item.label.startsWith(this.typed_item_name));
-      },
+    toString() {
+        return this.name;
+    }
+}
 
-      matching_named_item: function() {
-          if(this.mode != 'pick_named_item') {
-              return;
-          }
-          if(this.searched_named_items.length != 1) {
-              return;
-          }
-          return this.searched_named_items[0];
-      },
+const token_types = [
+    {regex: /^-?\d+(\.\d+)?/, fn: ([digits]) => new NumberItem(CReal.valueOf(digits))},
 
-      has_custom_ops: function() {
-          return this.custom_ops.some(o => o.valid);
-      }
-  },
-  watch: {
-      selection: function() {
-          const item = this.current_stack[this.row];
-          if(!item) {
-              return;
-          }
-          if(item.kind=='number') {
-            this.new_input = true;
-            this.input = nice_number(item.value);
-          }
-      },
-      title: function() {
-          document.title = this.title;
-      },
-      serialised: function() {
-          window.location.hash = this.serialised;
-      },
-    
-      editor_fn: function() {
-        if(!this.edit_op.symbol) {
-          this.edit_op.valid = false;
-          return;
-        }
+    {regex: /^(:+)(\S+|"[^\"]+")/, fn: ([_,colons,name]) => new VariableAssignment(name, colons.length)},
 
-        this.edit_op.valid = this.editor_fn !== null;
+    {regex: /\S+|"[^\"]+"/, fn: ([name]) => new OpReference(name)}
+];
 
-        const fn = this.editor_fn;
+function parse(str) {
+    let i = 0;
+    const tokens = [];
+    while(i<str.length) {
+        let s = str.slice(i);
+        const [space] = s.match(/^\s*/);
+        i += space.length;
+        s = str.slice(i);
 
-        this.edit_op.fn = (a,b) => { 
-            const r = fn(a,b); 
-            if(r===undefined) {
-                throw(new Error("This function didn't return anything."));
-            }; 
-            return r;
-        };
-
-        fns[this.edit_op.op] = this.edit_op.fn;
-      },
-
-      matching_named_item: function() {
-          if(!this.matching_named_item) {
-              return;
-          }
-          const item = this.matching_named_item;
-          this.add_named_item(item);
-          this.mode = 'calculator';
-      }
-  },
-  methods: {
-    can_op: function(op) {
-        if(op.arity===Infinity) {
-          return this.current_stack.length>0;
-        }
-        return (this.row>=op.arity-1 || (this.row==op.arity-2 && !this.new_input)) && this.top_stack;
-    },
-    can_custom: function(custom) {
-      if(custom.kind=='constant') {
-        return true;
-      } else {
-        return this.can_op(custom.op_object());
-      }
-    },
-    digit: function(n) {
-        if(this.new_input) {
-            this.input = '';
-        }
-        this.new_input = false;
-        this.input += n;
-    },
-    dot: function() {
-        if(this.new_input) {
-            this.input = '0';
-        }
-        if(this.input.match(/\./)) {
-            return;
-        }
-        this.new_input = false;
-        this.input += '.';
-    },
-    sign: function() {
-        if(this.new_input) {
-            this.input = '';
-        }
-        this.new_input = false;
-        if(this.input.match(/^-/)) {
-            this.input = this.input.slice(1);
-        } else {
-            this.input = '-'+this.input;
-        }
-    },
-    add_number: function() {
-        let val;
-        try {
-            val = CReal.valueOf(this.input);
-        } catch(e) {
-            return;
-        }
-        this.new_input = true;
-        if(!this.top_stack) {
-            const item = this.current_stack[this.row];
-            if(item.kind == 'number') {
-                item.value = val;
-                //this.current_stack.splice(this.row,1,new NumberItem(val));
+        for(let {regex,fn} of token_types) {
+            const m = regex.exec(s);
+            if(m) {
+                const token = fn(m);
+                tokens.push(token);
+                i += m[0].length;
+                break;
             }
-        } else {
-            this.push(new NumberItem(val));
         }
-    },
-    add_constant: function(constant) {
-        if(!this.top_stack) {
-            const item = this.current_stack[this.row];
-            if(item.kind == 'number') {
-                this.current_stack.splice(this.row,1,new ConstantItem(constant));
-                this.new_input = true;
-                this.row += 1;
-            }
-            return;
-        }
-        const multiple = !this.new_input;
-        if(multiple) {
-            this.add_number();
-        }
-        this.push(new ConstantItem(constant));
-        if(multiple) {
-            this.add_op(ops.find(op=>op.op=='mul'));
-        }
-    },
-    add_op: function(op) {
-        if(!this.can_op(op)) {
-            return;
-        }
-        if(!this.new_input) {
-            this.add_number();
-        }
-        const arity = op.arity===Infinity ? this.row+1 : op.arity;
-        const raw_args = this.current_stack.splice(this.row-(arity-1),arity);
-        const args = [];
-        for(let arg of raw_args) {
-          if(arg.kind=='op') {
-            arg.show_more_digits = false;
-          }
-          if(arg.kind=='op' && arg.op==op && op.chain) {
-            args.splice(args.length,0,...arg.args);
-          } else {
-            args.push(arg);
-          }
-        }
-        this.row -= arity;
-        this.push(new Op(op,args));
-    },
-    add_custom: function(custom) {
-        if(custom.kind=='constant') {
-          let val = custom.fn();
-          if(typeof(val)=='number') {
-            val = CReal.valueOf(val);
-          }
-          this.push(new NumberItem(val));
-        } else {
-          this.add_op(custom.op_object());
-        }
-    },
-    push: function(item) {
-        while(!this.top_stack) {
-            [this.current_stack,this.row] = this.parent_stacks.pop();
-        }
-        this.stack.splice(this.row+1,0,item);
-        this.row += 1;
-    },
-    backspace: function() {
-        this.input = this.input.slice(0, -1);
-        this.new_input = this.new_input || this.input=='';
-    },
-    pop: function() {
-        if(!this.can_pop) {
-            return;
-        }
-        this.current_stack.splice(this.row,1);
-        if(this.current_stack.length>0) {
-            this.row = Math.max(0,this.row-1);
-        } else {
-            this.row = -1;
-        }
-    },
-    swap: function() {
-        if(this.row<1) {
-            return;
-        }
-        const [a,b] = this.current_stack.splice(this.row-1,2);
-        this.current_stack.splice(this.row-1,0,b,a);
-    },
-    show_more_digits: function() {
-        const item = this.current_stack[this.row];
-        if(item.kind == 'op') {
-            item.show_more_digits = !item.show_more_digits;
-        }
-    },
-    focus_name_input: function() {
-        const input = this.$el.querySelector('.item.selected .edit-name');
-        if(input) {
-            input.focus();
-        }
-    },
-    copy: function() {
-        const item = this.current_stack[this.row];
-        while(this.parent_stacks.length) {
-            [this.current_stack,this.row] = this.parent_stacks.pop();
-        }
-        this.push(item.copy());
-    },
-    add_named_item(item) {
-        this.push(item);
-    },
+    }
+    return tokens;
+}
+window.parse = parse;
 
-    undo: function() {
-        if(!this.can_undo) {
-            return;
-        }
-        const [op] = this.current_stack.splice(this.row,1);
-        this.current_stack.splice(this.row,0,...op.args);
-        this.row += op.args.length-1;
-    },
+function run(tokens) {
+    let i = 0;
+    let steps = 0;
+    while(i<tokens.length && steps < 1e4) {
+        steps++;
 
-    edit_named: function() {
-        this.mode = 'named';
-    },
-
-    pick_named_item: function() {
-        this.mode = 'pick_named_item';
-        this.typed_item_name = '';
-    },
-
-    pick_matching_named_item: function(item) {
-        this.add_named_item(item);
-        this.mode = 'calculator';
-    },
-    
-    edit_custom: function() {
-      this.mode = 'editor';
-    },
-    set_edit_op: function(op) {
-      this.edit_op = op;
-    },
-    
-    up: function() {
-        if(this.row<=0) {
-            return;
-        }
-        this.row -= 1;
-    },
-    down: function() {
-        if(this.row >= this.current_stack.length-1) {
-            return;
-        } else {
-            this.row += 1;
-        }
-    },
-    left: function() {
-        if(this.top_stack) {
-            return;
-        }
-        [this.current_stack,this.row] = this.parent_stacks.pop();
-    },
-    right: function() {
-        if(this.current_stack[this.row].kind!='op') {
-            return;
-        }
-        this.parent_stacks.push([this.current_stack,this.row]);
-        this.current_stack = this.current_stack[this.row].args;
-        this.row = 0;
-    },
-
-    scroll_to_screen: function(d) {
-        const screens_container = this.$el.querySelector('.screens');
-        const scroll = screens_container.scrollTop;
-        const screens = Array.from(screens_container.querySelectorAll('.screen'));
-        const screen = screens.find(screen => screen.offsetTop >= scroll);
-        const i = screens.indexOf(screen);
-        const ni = (i + d + screens.length) % screens.length;
-
-        const to_screen = this.$el.querySelectorAll('.screens > .screen')[ni];
-        to_screen.scrollIntoView();
-        const button = to_screen.querySelector('button:not(:disabled)');
-        if(button) {
-            button.focus();
-        }
-    },
-
-    shift_up: function() {
-        this.scroll_to_screen(-1);
-    },
-
-    shift_down: function() {
-        this.scroll_to_screen(1);
-    },
-
-    click_item: function(path) {
-        this.parent_stacks = [];
-        this.current_stack = stack;
-        for(let row of path.slice(0,path.length-1)) {
-            this.parent_stacks.push([this.current_stack,row]);
-            this.current_stack = this.current_stack[row].args;
-        }
-        this.row = path[path.length-1];
-    },
-    delete: function() {
-        if(this.new_input) {
-            this.pop();
-        } else {
-            this.input = '';
-        }
-    },
-    escape: function() {
-        if(this.mode != 'pick_named_item' && document.activeElement.tagName == 'INPUT') {
-            document.activeElement.blur();
-            return;
-        }
-
-        this.mode = 'calculator';
-    },
-    handle_keypress: function(e, keys) {
-        if(keys[e.key]) {
-            keys[e.key](e);
-            e.preventDefault();
-            e.stopPropagation();
-        }
-    },
-    input_keypress: function(e) {
-        let keys = {
-          'Escape': e => this.escape(),
-          'Enter': e => this.escape(),
-        };
-        this.handle_keypress(e, keys);
-    },
-    calculator_keypress: function(e) {
-        if(e.ctrlKey || e.altKey || e.metaKey) {
-          return;
-        }
-        let keys = {
-          'Escape': e => this.escape()
-        };
-        switch(this.mode) {
-          case 'calculator':
-              keys = Object.assign(keys,{
-                  'ArrowLeft': e => this.left(),
-                  'ArrowRight': e => this.right(),
-                  'ArrowUp': e => e.shiftKey ? this.shift_up() : this.up(),
-                  'ArrowDown': e => e.shiftKey ? this.shift_down() : this.down(),
-                  '`': e => this.sign(),
-                  '0': e => this.digit(0),
-                  '1': e => this.digit(1),
-                  '2': e => this.digit(2),
-                  '3': e => this.digit(3),
-                  '4': e => this.digit(4),
-                  '5': e => this.digit(5),
-                  '6': e => this.digit(6),
-                  '7': e => this.digit(7),
-                  '8': e => this.digit(8),
-                  '9': e => this.digit(9),
-                  '.': e => this.dot(),
-                  '-': e => this.sign(),
-                  'Enter': e => this.add_number(),
-                  'Delete': e => this.delete(),
-                  'Backspace': e => this.backspace(),
-                  'u': e => this.undo(),
-                  'd': e => this.copy(),
-                  'w': e => this.swap(),
-                  '?': e => this.show_more_digits(),
-                  'n': e => this.focus_name_input(),
-                  'v': e => this.edit_named(),
-                  '@': e => this.pick_named_item(),
-              });
-              for(let o of this.ops) {
-                  keys[o.key] = e => this.add_op(o);
-              }
-              for(let c of this.constants) {
-                  if(c.key) {
-                      keys[c.key] = e => this.add_constant(c);
-                  }
-              }
-            break;
-          case 'editor':
-            keys = Object.assign(keys,{
+        const token = tokens[i];
+        console.log(tokens.join(' '));
+        console.log(''.padStart(tokens.slice(0,i).join(' ').length,' ')+'^');
+        if(token instanceof VariableAssignment) {
+            console.log(`define ${token.name}`);
+            tokens.splice(i,1);
+            const values = tokens.splice(i - token.n, token.n);
+            tokens = tokens.flatMap(t => {
+                if(t instanceof OpReference && t.name == token.name) {
+                    return values.slice();
+                } else {
+                    return [t];
+                }
             });
-            break;
-        }
-        this.handle_keypress(e, keys);
-    },
-    playback: function(expr_string) {
-      const expr = decodeURIComponent(expr_string).split(',');
-      const label_dict = {};
-      for(let item of expr) {
-        if(item.match(/^-?\d/)) {
-          this.push(new NumberItem(CReal.valueOf(item)));
-        } else if(item.match(/^\$/)) {
-          const label = item.slice(1);
-          const n = label_dict[label] = label_dict[label] || this.stack[this.stack.length-1];
-          n.label = label;
-          this.stack[this.stack.length-1] = label_dict[label];
+            i = 0;
+        } else if(token instanceof OpReference) {
+            const op = op_dict[token.name];
+            console.log('op',op);
+            if(op) {
+                if(i < op.arity) {
+                    console.log(`pass over because not enough args ${token}`);
+                    i += 1;
+                    continue;
+                }
+                const args = tokens.slice(i-op.arity, i);
+                console.log('args',i, op.arity, args.slice(), tokens.slice());
+                if(args.some(arg => !(arg instanceof Item))) {
+                    i += 1;
+                    console.log('not all items');
+                    continue;
+                }
+                console.log('go');
+                const value = new Op(op, args);
+                tokens.splice(i-op.arity,op.arity + 1, value);
+                i -= op.arity;
+            } else {
+                console.log(`pass over undefined ${token}`);
+                i += 1;
+            }
         } else {
-          const op = ops.find(x=>x.op==item);
-          const constant = constants.find(x=>x.label==item);
-          if(op) {
-            this.add_op(op);
-          } else if(constant) {
-            this.push(new ConstantItem(constant));
-          }
+            console.log(`pass over item ${token}`);
+            i += 1;
         }
-      }
     }
-  }
-})
-
-document.body.addEventListener('keydown',function(e) {
-    if(e.target.tagName == 'A') {
-        return;
-    } else if(e.target.tagName=='INPUT') {
-        app.input_keypress(e);
-    } else {
-        app.calculator_keypress(e);
-    }
-})
-
-if ('serviceWorker' in navigator) {
-  window.addEventListener('load', function() {
-    navigator.serviceWorker.register('service-worker.js').then(function(registration) {
-    }, function(err) {
-    });
-  });
+    return tokens;
 }
 
-if(playback_expression) {
-  app.playback(playback_expression.slice(1));
+const input_area = document.getElementById('input');
+const output_area = document.querySelector('output[for="input"]');
+
+function update() {
+    console.clear();
+    const program = input_area.value;
+    const tokens = parse(program);
+    console.log(tokens);
+    const output = run(tokens);
+    console.log(output.join(' '));
+    output_area.textContent = output.join(' ');
 }
+
+input_area.addEventListener('input', update);
+
+update();
