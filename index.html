@@ -83,7 +83,7 @@
           <touch-button class="back-to-calculator" @click="escape">← Back to the calculator</touch-button>
           <dl>
               <template v-for="item in sorted_named_items">
-                  <dt class="name" :data-kind="item.kind">{{item.label}} <small v-if="item.kind == 'op'" class="notation">= {{item.toNotation()}}</small></dt>
+                  <dt class="name" :data-kind="item.kind"><math class="notation"><mrow v-html="item.toMathML()"></mrow><mrow v-if="item.kind == 'op' && item.label"><mo>=</mo> <mrow v-html="item.toMathML(false)"></mrow></mrow></math></dt>
                   <dd class="value">
                      <named-item-editor v-if="item.kind == 'number'" :item="item"></named-item-editor>
                      <standalone-op-result v-if="item.kind != 'number'" :value="item.value"></op-result>

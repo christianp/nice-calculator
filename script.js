@@ -65,6 +65,16 @@ function nice_number(n, max_length = 10) {
 
 const used_labels = {};
 
+function mathml_label(label) {
+    let m;
+    if(m = label.match(/(.*)_(.*)/)) {
+        const ms = m[2].match(/^\d+/u) ? 'mn' : 'mi';
+        return `<msub><mi>${m[1]}</mi><${ms}>${m[2]}</${ms}></msub>`;
+    }
+
+    return `<mi>${label}</mi>`;
+}
+
 class NumberItem extends Item {
     constructor(value) {
         super();
@@ -100,25 +110,36 @@ class NumberItem extends Item {
     toNotation() {
         return (this.label || nice_number(this.value))+'';
     }
+
+    toMathML() {
+        if(this.label) {
+            return mathml_label(this.label);
+        } else {
+            return `<mn>${nice_number(this.value)}</mn>`;
+        }
+    }
 }
 NumberItem.prototype.kind = 'number';
 
 class ConstantItem extends NumberItem {
-  constructor(constant) {
-    super();
-    this.constant = constant;
-    this.value = constant.value;
-    this.label = constant.label;
-  }
-  copy() {
-    return this;
-  }
-  toString() {
-    return this.constant.label;
-  }
-  toNotation() {
-    return this.constant.label;
-  }
+    constructor(constant) {
+        super();
+        this.constant = constant;
+        this.value = constant.value;
+        this.label = constant.label;
+    }
+    copy() {
+        return this;
+    }
+    toString() {
+        return this.constant.label;
+    }
+    toNotation() {
+        return this.constant.label;
+    }
+    toMathML() {
+        return mathml_label(this.constant.label);
+    }
 }
 ConstantItem.prototype.kind = 'number';
 
@@ -189,6 +210,27 @@ class Op extends Item {
     } else {
       return `${this.op.symbol || this.op.op}\u200B(${this.args.map(x=>x.toNotation()).join(', ')})`;
     }
+  }
+
+  toMathML(use_label=true) {
+      if(use_label && this.label) {
+          return mathml_label(this.label);
+      }
+      if(this.op.toMathML) {
+          return this.op.toMathML(this.args);
+      } else if(this.op.precedence) {
+          const args = this.args.map(arg=>{
+              const argn = arg.toMathML();
+              if(!arg.label && arg instanceof Op && (arg.op.precedence<this.op.precedence || (arg.op.precedence==this.op.precedence && arg.op.symbol!=this.op.symbol))) {
+                  return `<mo>(</mo>${argn}<mo>)</mo>`;
+              } else {
+                  return argn;
+              }
+          });
+          return args.join(`<mo>${this.op.symbol}</mo>`);
+      } else {
+          return `<mo>${this.op.symbol || this.op.op}</mo>\u2061<mrow><mo>(</mo>${this.args.map(x=>x.toMathML()).join('<mo>,</mo>')}<mo>)</mo></mrow>`;
+      }
   }
 }
 Op.prototype.kind = 'op';
@@ -401,7 +443,7 @@ Vue.component('stack-item', {
                     @collapse_values="collapse_values"
                 ></item-op>
             </li>
-            <span class="notation" v-if="show_notation">{{item.toNotation()}}</span>
+            <math class="notation" v-if="show_notation" v-html="item.toMathML()"></math>
         </div>
     `
 });
@@ -508,9 +550,21 @@ function bracket_postfix(symbol) {
     }
 }
 
+function mathml_bracket_arg(arg) {
+    const x = arg.toMathML();
+    const mid = arg instanceof NumberItem ? x : `<mrow><mo>(</mo>${x}<mo>)</mo></mrow>`;
+    return mid;
+}
+
+function bracket_postfix_mathml(fn) {
+    return function([arg]) {
+        return fn(mathml_bracket_arg(arg));
+    }
+}
+
 const ops = [
-    {op: 'mul', 'label': '×', 'key': '*', arity: 2, fn: product, screen: 'main', chain: true, precedence: 2, symbol: '×'},
-    {op: 'div', 'label': '÷', 'key': '/', arity: 2, fn: (a,b) => a.divide(b), screen: 'main', precedence: 2, symbol: '÷'},
+    {op: 'mul', 'label': '×', 'key': '*', arity: 2, fn: product, screen: 'main', chain: true, precedence: 2, symbol: '⋅'},
+    {op: 'div', 'label': '÷', 'key': '/', arity: 2, fn: (a,b) => a.divide(b), screen: 'main', precedence: 2, symbol: '÷', toMathML: args => `<mfrac><mrow>${args[0].toMathML()}</mrow><mrow>${args[1].toMathML()}</mrow></mfrac>`},
     {op: 'add', 'label': '+', 'key': '+', arity: 2, fn: sum, screen: 'main', chain: true, precedence: 1, symbol: '+'},
     {op: 'sub', 'label': '-', 'key': '-', arity: 2, fn: (a,b) => a.subtract(b), screen: 'main', precedence: 1, symbol: '-'},
     {op: 'sin', 'label': 'Sin', 'key': 's', arity: 1, fn: a => a.sin(), area: 'num-7', screen: 'trig'},
@@ -519,18 +573,25 @@ const ops = [
     {op: 'arcsin', 'label': 'Sin⁻¹', 'key': 'S', arity: 1, fn: a => a.asin(), area: 'num-4', screen: 'trig'},
     {op: 'arccos', 'label': 'Cos⁻¹', 'key': 'C', arity: 1, fn: a => a.acos(), area: 'num-5', screen: 'trig'},
     {op: 'arctan', 'label': 'Tan⁻¹', 'key': 'T', arity: 1, fn: a => a.divide(a.multiply(a).add(CReal.ONE).sqrt()).asin(), area: 'num-6', screen: 'trig'},
-    {op: 'square', 'label': 'x²', 'key': '^', arity: 1, fn: x => x.multiply(x), area: 'num-0', screen: 'trig', toNotation: bracket_postfix('²'), precedence: 3},
-    {op: 'root', 'label': '√', 'key': 'r', arity: 1, fn: x => x.sqrt(), area: 'sign', screen: 'trig', symbol: '√'},
-    {op: 'pow', 'label': 'xʸ', 'key': 'p', arity: 2, fn: (a,b) => a.pow(b), area: 'dot', screen: 'trig', precedence: '3', symbol: '^'},
+    {op: 'square', 'label': 'x²', 'key': '^', arity: 1, fn: x => x.multiply(x), area: 'num-0', screen: 'trig', toNotation: bracket_postfix('²'), toMathML: bracket_postfix_mathml(x => `<msup>${x}<mn>2</mn></msup>`), precedence: 3},
+    {op: 'root', 'label': '√', 'key': 'r', arity: 1, fn: x => x.sqrt(), area: 'sign', screen: 'trig', symbol: '√', toMathML: ([arg]) => `<msqrt>${arg.toMathML()}</msqrt>`},
+    {op: 'pow', 'label': 'xʸ', 'key': 'p', arity: 2, fn: (a,b) => a.pow(b), area: 'dot', screen: 'trig', precedence: '3', symbol: '^', 
+        toMathML: args => {
+            const [a,b] = args;
+            return `<msup>${mathml_bracket_arg(a)}<mrow>${b.toMathML()}</mrow></msup>`;
+        }
+    },
     {op: 'ln', 'label': 'ln', 'key': 'l', arity: 1, fn: a => a.ln(), area: 'op-mul', screen: 'trig'},
     {op: 'log', 'label': 'log', 'key': 'L', arity: 1, fn: a => a.ln().divide(CReal.valueOf(10).ln()), area: 'op-div', screen: 'trig'},
-    {op: 'exp', 'label': 'eˣ', 'key': 'e', arity: 1, fn: a => a.exp(), area: 'op-add', screen: 'trig'},
-    {op: 'exp10', 'label': '10ˣ', 'key': 'E', arity: 1, fn: a => a.multiply(CReal.valueOf(10).ln()).exp(), area: 'op-sub', screen: 'trig'},
-    {op: 'factorial', 'label': 'x!', 'key': '!', arity: 1, fn: factorial, area: 'num-3', screen: 'trig', toNotation: bracket_postfix('!')},
-    {op: 'combinations', 'label': 'ⁿCᵣ', 'key': '', arity: 2, fn: combinations, area: 'constant-pi', screen: 'trig'},
-    {op: 'permutations', 'label': 'ⁿPᵣ', 'key': '', arity: 2, fn: permutations, area: 'constant-e', screen: 'trig'},
-    {op: 'mean', 'label': 'Mean', 'key': 'm', arity: Infinity, fn: mean, area: 'num-1', screen: 'trig'},
-    {op: 'mod', 'label': 'Mod', 'key': '%', arity: 2, fn: (a,b) => CReal.valueOf(a.BigIntValue() % b.BigIntValue()), area: 'num-2', screen: 'trig'},
+    {op: 'exp', 'label': 'eˣ', 'key': 'e', arity: 1, fn: a => a.exp(), area: 'op-add', screen: 'trig', toMathML: ([arg]) => `<msup><mi>e</mi><mrow>${arg.toMathML()}</mrow></msup>`},
+    {op: 'exp10', 'label': '10ˣ', 'key': 'E', arity: 1, fn: a => a.multiply(CReal.valueOf(10).ln()).exp(), area: 'op-sub', screen: 'trig', toMathML: ([arg]) => `<msup><mn>10</mn><mrow>${arg.toMathML()}</mrow></msup>`},
+    {op: 'factorial', 'label': 'x!', 'key': '!', arity: 1, fn: factorial, area: 'num-3', screen: 'trig', toNotation: bracket_postfix('!'), toMathML: bracket_postfix_mathml(x => `${x}<mo>!</mo>`)},
+    {op: 'combinations', 'label': 'ⁿCᵣ', 'key': '', arity: 2, fn: combinations, area: 'constant-pi', screen: 'trig', toMathML: ([a,b]) => `<mmultiscripts><mo>C</mo><mrow>${b.toMathML()}</mrow><mrow/><mprescripts/><mrow/><mrow>${a.toMathML()}</mrow></mmultiscripts>`},
+    {op: 'permutations', 'label': 'ⁿPᵣ', 'key': '', arity: 2, fn: permutations, area: 'constant-e', screen: 'trig', toMathML: ([a,b]) => `<mmultiscripts><mo>C</mo><mrow>${b.toMathML()}</mrow><mrow/><mprescripts/><mrow/><mrow>${a.toMathML()}</mrow></mmultiscripts>`},
+    {op: 'mean', 'label': 'Mean', 'key': 'm', arity: 2, chain: true, fn: mean, area: 'num-1', screen: 'trig'},
+    {op: 'mod', 'label': 'Mod', 'key': '%', arity: 2, fn: (a,b) => CReal.valueOf(a.BigIntValue() % b.BigIntValue()), area: 'num-2', screen: 'trig', 
+        toMathML: ([a,b]) => `${a.toMathML()}<mspace width="0.5em"></mspace><mrow><mo>(</mo><mrow><mi>mod</mi><mspace width="0.5em"></mspace>${b.toMathML()}</mrow><mo>)</mo></mrow>`,
+    }
 ];
 
 const constants = [
@@ -693,11 +754,15 @@ const app = window.app = new Vue({
 
       sorted_named_items: function() {
           const kinds = ['number', 'op'];
-          return this.named_items.toSorted((a,b) => {
+          let out = this.named_items.toSorted((a,b) => {
               const ai = kinds.indexOf(a.kind);
               const bi = kinds.indexOf(b.kind);
               return ai != bi ? ai-bi : a.label < b.label ? -1 : a.label > b.label ? 1 : 0;
           });
+
+          out = out.concat(this.stack.filter(item => !item.label && item.kind == 'op'));
+          
+          return out;
       },
 
       searched_named_items: function() {
@@ -1005,6 +1070,10 @@ const app = window.app = new Vue({
         }
     },
 
+    show_screen: function(screen) {
+        this.$el.querySelector(`.screens > .screen.${name}`).scrollIntoView();
+    },
+
     shift_up: function() {
         this.scroll_to_screen(-1);
     },
@@ -1080,13 +1149,14 @@ const app = window.app = new Vue({
                   '-': e => this.sign(),
                   'Enter': e => this.add_number(),
                   'Delete': e => this.delete(),
-                  'Backspace': e => this.backspace(),
+                  'Backspace': e => e.shiftKey ? this.delete() : this.backspace(),
                   'u': e => this.undo(),
                   'd': e => this.copy(),
                   'w': e => this.swap(),
                   '?': e => this.show_more_digits(),
                   'n': e => this.focus_name_input(),
-                  'v': e => this.edit_named(),
+                  'v': e => this.show_screen('named'),
+                  'V': e => this.edit_named(),
                   '@': e => this.pick_named_item(),
               });
               for(let o of this.ops) {
