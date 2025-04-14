@@ -467,7 +467,6 @@ button.add-custom {
   align-self: end;
   grid-area: notation;
   color: var(--notation-color);
-  font-style: italic;
   font-size: 0.9em;
 }
 .item-container .item {

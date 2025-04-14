@@ -1,5 +1,6 @@
 import emoji from './emoji.js';
 import CReal from './creal.js';
+import {createApp} from './vue.js';
 
 window.CReal = CReal;
 
@@ -235,278 +236,6 @@ class Op extends Item {
 }
 Op.prototype.kind = 'op';
 
-Vue.component('touch-button', {
-    props: ['kind'],
-    methods: {
-        click: function(e) {
-            this.$emit('click',e);
-            e.preventDefault();
-            this.$el.focus();
-            if(!this.$el.disabled) {
-                if(window.navigator.vibrate) {
-                    window.navigator.vibrate([30]);
-                }
-            }
-        }
-    },
-    template: `<button :data-kind="kind" @click="click"><slot></slot></button>`
-})
-
-Vue.component('item-number', {
-    props: ['value'],
-    computed: {
-        has_error: function() {
-            if(this.value instanceof CalculationError) {
-                return true;
-            }
-
-            try {
-                this.value.toString();
-                return false;
-            } catch(e) {
-                return true;
-            }
-        }
-    },
-    methods: {
-      display: function() {
-        const value = this.value;
-        return nice_number(this.value);
-      }
-    },
-    template: `
-        <span data-kind="number" class="number" :class="{error: has_error}">{{display()}}</span>
-    `,
-})
-
-Vue.component('item-op', {
-    props: ['op','args','value','depth','path','selection_path', 'value_collapsed'],
-    data: function() {
-        return {
-            args_collapsed: this.depth > 0,
-        }
-    },
-    watch: {
-      selection_path: function(newPath,oldPath) {
-        if(JSON.stringify(newPath)==JSON.stringify(oldPath)) {
-            return;
-        }
-        if((this.selection_path || []).length>0) {
-          this.args_collapsed = false;
-        } else {
-          this.args_collapsed = this.depth>0;
-        }
-      }
-    },
-    methods: {
-        click_item: function(path) {
-            this.$emit('click-item',path)
-        },
-        collapse_args: function() {
-            this.args_collapsed = !this.args_collapsed;
-        },
-        display: function() {
-            return nice_number(this.value);
-        },
-    },
-    template: `
-        <div data-kind="op" class="op" :class="{'args-collapsed': args_collapsed, 'value-collapsed': value_collapsed}">
-            <item-stack v-if="!args_collapsed" :items="args" :depth="depth+1" :path="path" :selection_path="selection_path" @click-item="click_item"></item-stack>
-            <div class="symbol" v-if="!args_collapsed" @click="collapse_args">{{op.label}}</div>
-            <div class="show-collapsed" v-if="args_collapsed" @click="collapse_args">...</div>
-            <op-result :value="value" :value_collapsed="value_collapsed"></op-result>
-        </div>
-    `
-})
-
-Vue.component('op-result', {
-    props: ['value', 'value_collapsed'],
-
-    data: function() {
-        return {
-            digits_shown : 500,
-        }
-    },
-
-    computed: {
-      more_digits: function() {
-          if(this.value instanceof CalculationError) {
-              return {whole: this.value+'', frac: ''};
-          }
-          const s = this.value.toString(this.digits_shown);
-          const m = s.match(/(-?\d+)(?:\.(\d+))?/);
-          const [whole, frac] = m.slice(1);
-          const space = '     '.slice(0,(5 - (whole.length%5))%5);
-          const first = whole.slice(0,whole.length % 5);
-          const rest = whole.slice(whole.length % 5).replace(/(.{5})/g,' $1').trim();
-          let spaced_whole = space + first + (first && rest ? ' ' : '') + rest;
-          return {whole: spaced_whole, frac: frac.replace(/(.{5})/g,'$1 ').trim()};
-      }
-    },
-
-    methods: {
-        tap: function() {
-            if(window.getSelection().type == 'Range') {
-                return;
-            }
-            this.$emit('collapse_values')
-        },
-        scroll_more_digits: function(e) {
-            const p = e.target;
-            if(p.scrollTop > p.scrollHeight - 100) {
-                this.digits_shown += 500;
-            }
-        },
-    },
-    template: `
-        <div class="result" @click="tap" tabindex="" role="group">
-            <item-number v-if="value_collapsed" :value="value"></item-number>
-            <pre class="more-digits" v-if="!value_collapsed" @scroll="scroll_more_digits"><span class="whole">{{more_digits.whole}}</span><span v-if="more_digits.frac">.</span><span class="frac" v-if="more_digits.frac">{{more_digits.frac}}</span></pre>
-        </div>
-    `
-});
-
-Vue.component('standalone-op-result', {
-    props: ['value'],
-    data: function() {
-        return {
-            value_collapsed: true
-        }
-    },
-    methods: {
-        collapse_values: function() {
-            this.value_collapsed = !this.value_collapsed;
-        }
-    },
-    template: `
-        <op-result :value="value" :value_collapsed="value_collapsed" @collapse_values="collapse_values"></op-result>
-    `
-});
-
-Vue.component('stack-item', {
-    props: ['item','depth','path','selection_path','selected'],
-    methods: {
-        click_item: function(path) {
-            this.$emit('click-item',path);
-        },
-        click: function(e) {
-            let t = e.target;
-            while(t && t!=this.$el) {
-                if(t.classList.contains('item-container')) {
-                    return;
-                }
-                t = t.parentElement;
-            }
-            this.$emit('click-item',this.path);
-        },
-        collapse_values: function() {
-          this.item.show_more_digits = !this.item.show_more_digits && this.selected;
-        }
-    },
-    mounted: function() {
-        this.$el.scrollIntoView && this.$el.scrollIntoView({block: 'center'});
-    },
-    computed: {
-        top: function() {
-            return this.path.length<=1;
-        },
-        show_notation: function() {
-            return this.top && this.item.kind=='op';
-        },
-        label_length: function() {
-            return (this.label || '').length;
-        }
-    },
-    watch: {
-        selected: function() {
-            if(this.selected) {
-                this.$el.scrollIntoView && this.$el.scrollIntoView({block: 'center'});
-            }
-        }
-    },
-    template: `
-        <div class="item-container">
-            <li class="item" :class="[selected ? 'selected' : '',item.kind]" :data-kind="item.kind" @click="click">
-                <input :placeholder="item.toNotation()" v-if="selected && !item.constant" class="edit-name" v-model="item.label" autocapitalize="off"></input>
-                <span v-if="item.constant || !selected && item.label" class="label">{{item.label}}</span>
-                <item-number v-if="item.kind=='number'" :value="item.value"></item-number>
-                <item-op 
-                    v-if="item.kind=='op'" 
-                    :op="item.op" 
-                    :args="item.args" 
-                    :value="item.value" 
-                    :depth="depth" 
-                    :path="path" 
-                    :selection_path="selection_path" 
-                    :value_collapsed="!item.show_more_digits" 
-                    @click-item="click_item" 
-                    @collapse_values="collapse_values"
-                ></item-op>
-            </li>
-            <math class="notation" v-if="show_notation" v-html="item.toMathML()"></math>
-        </div>
-    `
-});
-
-Vue.component('item-stack', {
-    props: ['items','depth','path','selection_path'],
-    methods: {
-        click_item: function(path) {
-            this.$emit('click-item',path);
-        }
-    },
-    computed: {
-        hue: function() {
-            return 1.618*360*(this.depth+1)
-        },
-        row: function() {
-            return this.selection_path.length ? this.selection_path[0] : -1;
-        },
-        selected: function() {
-            return this.selection_path.length==1;
-        }
-    },
-    template: `
-<div class="stack">
-    <transition-group name="stack" tag="ol" class="stack-items">
-            <stack-item 
-                v-for="(item,index) in items" 
-                :key="item.id" 
-                :item="item" 
-                :depth="depth" 
-                :path="path.concat([index])" 
-                :selection_path="selection_path.length && selection_path[0]==index ? selection_path.slice(1) : []" 
-                :selected="selected && index==row" 
-                @click-item="click_item"
-            >
-            </stack-item>
-    </transition-group>
-</div>
-    `
-})
-
-Vue.component('named-item-editor', {
-    props: ['item'],
-    data: function() {
-        return {
-            string_value: remove_trailing_zeros(this.item.value.toString())
-        }
-    },
-    watch: {
-        string_value: function(e) {
-            this.item.value = CReal.valueOf(this.string_value);
-        }
-    },
-    template: `
-      <input type="number" v-model="string_value">
-    `
-});
-
-Vue.directive('focus', {
-    inserted: el => el.focus()
-});
-
-
 function factorial(n) {
     n = n.abs().BigIntValue();
     let t = 1n;
@@ -638,23 +367,25 @@ const custom_ops = [];
 custom_op_positions.forEach((location,i) => {
   custom_ops.push(new CustomOp(i,location));
 })
-const app = window.app = new Vue({
-  el: '#app',
-  data: {
-    mode: 'calculator',
-    row: -1,
-    current_stack: stack,
-    parent_stacks: [],
-    new_input: true,
-    ops: ops,
-    input: '',
-    stack: stack,
-    constants: constants,
-    typed_item_name: '',
-    
-    custom_ops: custom_ops,
-    edit_op: custom_ops[0],
-    editor_warning: ''
+
+let app = createApp({
+  data: () => {
+      return {
+          mode: 'calculator',
+          row: -1,
+          current_stack: stack,
+          parent_stacks: [],
+          new_input: true,
+          ops: ops,
+          input: '',
+          stack: stack,
+          constants: constants,
+          typed_item_name: '',
+
+          custom_ops: custom_ops,
+          edit_op: custom_ops[0],
+          editor_warning: ''
+      }
   },
   computed: {
       path: function() {
@@ -729,9 +460,9 @@ const app = window.app = new Vue({
               fn = new Function(code);
               break;
           }
-          this.editor_warning = '';
-        } catch(e) {
-          this.editor_warning = e.message;
+          //this.editor_warning = ''; TODO - track the error message without a side effect here
+         } catch(e) {
+          //this.editor_warning = e.message;
           return null;
         }
         return fn;
@@ -980,7 +711,7 @@ const app = window.app = new Vue({
         }
     },
     focus_name_input: function() {
-        const input = this.$el.querySelector('.item.selected .edit-name');
+        const input = document.body.querySelector('.item.selected .edit-name');
         if(input) {
             input.focus();
         }
@@ -1055,14 +786,14 @@ const app = window.app = new Vue({
     },
 
     scroll_to_screen: function(d) {
-        const screens_container = this.$el.querySelector('.screens');
+        const screens_container = document.body.querySelector('.screens');
         const scroll = screens_container.scrollTop;
         const screens = Array.from(screens_container.querySelectorAll('.screen'));
         const screen = screens.find(screen => screen.offsetTop >= scroll);
         const i = screens.indexOf(screen);
         const ni = (i + d + screens.length) % screens.length;
 
-        const to_screen = this.$el.querySelectorAll('.screens > .screen')[ni];
+        const to_screen = document.body.querySelectorAll('.screens > .screen')[ni];
         to_screen.scrollIntoView();
         const button = to_screen.querySelector('button:not(:disabled)');
         if(button) {
@@ -1071,7 +802,7 @@ const app = window.app = new Vue({
     },
 
     show_screen: function(screen) {
-        this.$el.querySelector(`.screens > .screen.${name}`).scrollIntoView();
+        document.body.querySelector(`.screens > .screen.${name}`).scrollIntoView();
     },
 
     shift_up: function() {
@@ -1200,6 +931,280 @@ const app = window.app = new Vue({
   }
 })
 
+app.component('touch-button', {
+    props: ['kind'],
+    methods: {
+        click: function(e) {
+            e.preventDefault();
+            console.log(this.$el);
+            this.$el.focus();
+            if(!this.$el.disabled) {
+                if(window.navigator.vibrate) {
+                    window.navigator.vibrate([30]);
+                }
+            }
+        }
+    },
+    template: `<button :data-kind="kind" @click="click"><slot></slot></button>`
+})
+
+app.component('item-number', {
+    props: ['value'],
+    computed: {
+        has_error: function() {
+            if(this.value instanceof CalculationError) {
+                return true;
+            }
+
+            try {
+                this.value.toString();
+                return false;
+            } catch(e) {
+                return true;
+            }
+        }
+    },
+    methods: {
+      display: function() {
+        const value = this.value;
+        return nice_number(this.value);
+      }
+    },
+    template: `
+        <span data-kind="number" class="number" :class="{error: has_error}">{{display()}}</span>
+    `,
+})
+
+app.component('item-op', {
+    props: ['op','args','value','depth','path','selection_path', 'value_collapsed'],
+    data: function() {
+        return {
+            args_collapsed: this.depth > 0,
+        }
+    },
+    watch: {
+      selection_path: function(newPath,oldPath) {
+        if(JSON.stringify(newPath)==JSON.stringify(oldPath)) {
+            return;
+        }
+        if((this.selection_path || []).length>0) {
+          this.args_collapsed = false;
+        } else {
+          this.args_collapsed = this.depth>0;
+        }
+      }
+    },
+    methods: {
+        click_item: function(path) {
+            this.$emit('click-item',path)
+        },
+        collapse_args: function() {
+            this.args_collapsed = !this.args_collapsed;
+        },
+        display: function() {
+            return nice_number(this.value);
+        },
+    },
+    template: `
+        <div data-kind="op" class="op" :class="{'args-collapsed': args_collapsed, 'value-collapsed': value_collapsed}">
+            <item-stack v-if="!args_collapsed" :items="args" :depth="depth+1" :path="path" :selection_path="selection_path" @click-item="click_item"></item-stack>
+            <div class="symbol" v-if="!args_collapsed" @click="collapse_args">{{op.label}}</div>
+            <div class="show-collapsed" v-if="args_collapsed" @click="collapse_args">...</div>
+            <op-result :value="value" :value_collapsed="value_collapsed"></op-result>
+        </div>
+    `
+})
+
+app.component('op-result', {
+    props: ['value', 'value_collapsed'],
+
+    data: function() {
+        return {
+            digits_shown : 500,
+        }
+    },
+
+    computed: {
+      more_digits: function() {
+          if(this.value instanceof CalculationError) {
+              return {whole: this.value+'', frac: ''};
+          }
+          const s = this.value.toString(this.digits_shown);
+          const m = s.match(/(-?\d+)(?:\.(\d+))?/);
+          const [whole, frac] = m.slice(1);
+          const space = '     '.slice(0,(5 - (whole.length%5))%5);
+          const first = whole.slice(0,whole.length % 5);
+          const rest = whole.slice(whole.length % 5).replace(/(.{5})/g,' $1').trim();
+          let spaced_whole = space + first + (first && rest ? ' ' : '') + rest;
+          return {whole: spaced_whole, frac: frac.replace(/(.{5})/g,'$1 ').trim()};
+      }
+    },
+
+    methods: {
+        tap: function() {
+            if(window.getSelection().type == 'Range') {
+                return;
+            }
+            this.$emit('collapse_values')
+        },
+        scroll_more_digits: function(e) {
+            const p = e.target;
+            if(p.scrollTop > p.scrollHeight - 100) {
+                this.digits_shown += 500;
+            }
+        },
+    },
+    template: `
+        <div class="result" @click="tap" tabindex="" role="group">
+            <item-number v-if="value_collapsed" :value="value"></item-number>
+            <pre class="more-digits" v-if="!value_collapsed" @scroll="scroll_more_digits"><span class="whole">{{more_digits.whole}}</span><span v-if="more_digits.frac">.</span><span class="frac" v-if="more_digits.frac">{{more_digits.frac}}</span></pre>
+        </div>
+    `
+});
+
+app.component('standalone-op-result', {
+    props: ['value'],
+    data: function() {
+        return {
+            value_collapsed: true
+        }
+    },
+    methods: {
+        collapse_values: function() {
+            this.value_collapsed = !this.value_collapsed;
+        }
+    },
+    template: `
+        <op-result :value="value" :value_collapsed="value_collapsed" @collapse_values="collapse_values"></op-result>
+    `
+});
+
+app.component('stack-item', {
+    props: ['item','depth','path','selection_path','selected'],
+    methods: {
+        click_item: function(path) {
+            this.$emit('click-item',path);
+        },
+        click: function(e) {
+            let t = e.target;
+            while(t && t!=this.$el) {
+                if(t.classList.contains('item-container')) {
+                    return;
+                }
+                t = t.parentElement;
+            }
+            this.$emit('click-item',this.path);
+        },
+        collapse_values: function() {
+          this.item.show_more_digits = !this.item.show_more_digits && this.selected;
+        }
+    },
+    mounted: function() {
+        this.$el.scrollIntoView && this.$el.scrollIntoView({block: 'center'});
+    },
+    computed: {
+        top: function() {
+            return this.path.length<=1;
+        },
+        show_notation: function() {
+            return this.top && this.item.kind=='op';
+        },
+        label_length: function() {
+            return (this.label || '').length;
+        }
+    },
+    watch: {
+        selected: function() {
+            if(this.selected) {
+                this.$el.scrollIntoView && this.$el.scrollIntoView({block: 'center'});
+            }
+        }
+    },
+    template: `
+        <div class="item-container">
+            <li class="item" :class="[selected ? 'selected' : '',item.kind]" :data-kind="item.kind" @click="click">
+                <input :placeholder="item.toNotation()" v-if="selected && !item.constant" class="edit-name" v-model="item.label" autocapitalize="off"></input>
+                <span v-if="item.constant || !selected && item.label" class="label">{{item.label}}</span>
+                <item-number v-if="item.kind=='number'" :value="item.value"></item-number>
+                <item-op 
+                    v-if="item.kind=='op'" 
+                    :op="item.op" 
+                    :args="item.args" 
+                    :value="item.value" 
+                    :depth="depth" 
+                    :path="path" 
+                    :selection_path="selection_path" 
+                    :value_collapsed="!item.show_more_digits" 
+                    @click-item="click_item" 
+                    @collapse_values="collapse_values"
+                ></item-op>
+            </li>
+            <math class="notation" v-if="show_notation" v-html="item.toMathML()"></math>
+        </div>
+    `
+});
+
+app.component('item-stack', {
+    props: ['items','depth','path','selection_path'],
+    methods: {
+        click_item: function(path) {
+            this.$emit('click-item',path);
+        }
+    },
+    computed: {
+        hue: function() {
+            return 1.618*360*(this.depth+1)
+        },
+        row: function() {
+            return this.selection_path.length ? this.selection_path[0] : -1;
+        },
+        selected: function() {
+            return this.selection_path.length==1;
+        }
+    },
+    template: `
+<div class="stack">
+    <transition-group name="stack" tag="ol" class="stack-items">
+            <stack-item 
+                v-for="(item,index) in items" 
+                :key="item.id" 
+                :item="item" 
+                :depth="depth" 
+                :path="path.concat([index])" 
+                :selection_path="selection_path.length && selection_path[0]==index ? selection_path.slice(1) : []" 
+                :selected="selected && index==row" 
+                @click-item="click_item"
+            >
+            </stack-item>
+    </transition-group>
+</div>
+    `
+})
+
+app.component('named-item-editor', {
+    props: ['item'],
+    data: function() {
+        return {
+            string_value: remove_trailing_zeros(this.item.value.toString())
+        }
+    },
+    watch: {
+        string_value: function(e) {
+            this.item.value = CReal.valueOf(this.string_value);
+        }
+    },
+    template: `
+      <input type="number" v-model="string_value">
+    `
+});
+
+app.directive('focus', {
+    inserted: el => el.focus()
+});
+
+
+app = window.app = app.mount('#app');
+
 document.body.addEventListener('keydown',function(e) {
     if(e.target.tagName == 'A') {
         return;
@@ -1221,3 +1226,5 @@ if ('serviceWorker' in navigator) {
 if(playback_expression) {
   app.playback(playback_expression.slice(1));
 }
+
+// TODO : play back chained ops properly

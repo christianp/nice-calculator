@@ -903,6 +903,10 @@ class int_CReal extends CReal {
         this.value = n;
     }
 
+    copy() {
+        return new int_CReal(this.value);
+    }
+
     approximate(p) {
         return CReal.scale(this.value, -p);
     }
@@ -920,6 +924,10 @@ class assumed_int_CReal extends CReal {
     constructor(x) {
         super();
         this.value = x;
+    }
+
+    copy() {
+        return new assumed_int_CReal(this.value.copy());
     }
 
     approximate(p) {
@@ -949,6 +957,10 @@ class add_CReal extends CReal {
     approximate(p) {
         return CReal.scale(this.op1.get_appr(p-2) + this.op2.get_appr(p-2), -2);
     }
+
+    copy() {
+        return new add_CReal(this.op1.copy(),this.op2.copy());
+    }
 }
 
 /** Representation of a CReal multiplied by 2**n.
@@ -968,6 +980,10 @@ class shifted_CReal extends CReal {
 
     approximate(p) {
         return this.op.get_appr(p - this.count);
+    }
+
+    copy() {
+        return new shifted_CReal(this.op.copy(), this.count);
     }
 }
 
@@ -991,6 +1007,10 @@ class neg_CReal extends CReal {
     approximate(p) {
         return -this.op.get_appr(p);
     }
+
+    copy() {
+        return new neg_CReal(this.op.copy());
+    }
 }
 
 /** Representation of:
@@ -1012,6 +1032,10 @@ class select_CReal extends CReal {
         this.selector_sign = bigIntMath.signum(this.selector.get_appr(-20));
         this.op1 = x;
         this.op2 = y;
+    }
+
+    copy() {
+        return new select_CReal(this.selector.copy(), this.op1.copy(), this.op2.copy());
     }
 
     approximate(p) {
@@ -1052,6 +1076,10 @@ class mult_CReal extends CReal {
         super();
         this.op1 = x;
         this.op2 = y;
+    }
+
+    copy() {
+        return new mult_CReal(this.op1.copy(), this.op2.copy());
     }
 
     approximate(p) {
@@ -1107,6 +1135,10 @@ class inv_CReal extends CReal {
         this.op = x;
     }
 
+    copy() {
+        return new inv_CReal(this.op.copy());
+    }
+
     approximate(p) {
         const msd = this.op.msd();
         const inv_msd = 1 - msd;
@@ -1159,6 +1191,10 @@ class prescaled_exp_CReal extends CReal {
         this.op = x;
     }
 
+    copy() {
+        return new prescaled_exp_CReal(this.op.copy());
+    }
+
     approximate(p) {
         if(p >= 1) {
             return 0n;
@@ -1196,6 +1232,10 @@ class prescaled_cos_CReal extends slow_CReal {
     constructor(x) {
         super();
         this.op = x;
+    }
+
+    copy() {
+        return new prescaled_cos_CReal(this.op.copy());
     }
 
     approximate(p) {
@@ -1242,6 +1282,10 @@ class integral_atan_CReal extends slow_CReal {
     constructor(x) {
         super();
         this.op = x;
+    }
+
+    copy() {
+        return new integral_atan_CReal(this.op);
     }
 
     approximate(p) {
@@ -1296,6 +1340,10 @@ class prescaled_ln_CReal extends slow_CReal {
         this.op = x;
     }
 
+    copy() {
+        return new prescaled_ln_CReal(this.op.copy());
+    }
+
     /** Compute an approximation of ln(1+x) to precision
      *  prec. This assumes |x| < 1/2.
      *  It uses a Taylor series expansion.
@@ -1348,6 +1396,10 @@ class prescaled_asin_CReal extends slow_CReal {
     constructor(x) {
         super();
         this.op = x;
+    }
+
+    copy() {
+        return new prescaled_asin_CReal(this.op.copy());
     }
 
     approximate(p) {
@@ -1449,6 +1501,10 @@ class sqrt_CReal extends CReal {
             this.max_appr = max_a;
             this.appr_valid = true;
         }
+    }
+
+    copy() {
+        return new sqrt_CReal(this.op.copy(), this.min_prec, this.max_appr);
     }
 
     static fp_prec = 50;
@@ -1616,6 +1672,10 @@ class gl_pi_CReal extends slow_CReal {
         super();
         this.b_prec = [null];
         this.b_val = [null];
+    }
+
+    copy() {
+        return new gl_pi_CReal();
     }
 
     static TOLERANCE = 4n;

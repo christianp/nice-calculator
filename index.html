@@ -2,10 +2,7 @@
 <html lang='en' class=''>
   <head>
     <title>CLP's Nice Calculator</title>
-    <script src="vue.js"></script>
-    <script src="hammer.js"></script>
-    <script src="vue-hammer.js"></script>
-    <script type="module" src="script.js?202407311605"></script>
+    <script type="module" src="script.js?202504141012"></script>
     <link rel="stylesheet" href="style.css?202407311224"></link>
     <link rel="manifest" href="manifest.json?202306078">
     <meta charset="UTF-8">
@@ -15,7 +12,7 @@
     <div id="app">
       <a href="help.html" target="help" id="help-link" v-if="mode=='calculator'">Help!</a>
       <div class="calculator" v-if="mode=='calculator'">
-          <item-stack :items="stack" :depth="0" :path="[]" :selection_path="path" @click-item="click_item"></item-stack>
+          <item-stack ref="stack" :items="stack" :depth="0" :path="[]" :selection_path="path" @click-item="click_item"></item-stack>
           <span class="input" type="text" :class="{'new': new_input}">{{input}}</span>
           <touch-button @click="backspace" class="backspace" title="Backspace">⌫</touch-button>
           <div class="buttons">
@@ -30,11 +27,15 @@
                       <touch-button class="dot digit"  @click="dot" title=".">.</touch-button>
                       <touch-button class="sign digit"  @click="sign" title="`">±</touch-button>
                       <touch-button v-for="constant in constants" class="constant" @click="add_constant(constant)" :style="{'grid-area': constant.area || 'constant-'+constant.name}"  :title="constant.key">{{constant.label}}</touch-button>
-                      <touch-button v-for="op in ops" v-if="op.screen == 'main'" class="op" @click="add_op(op)" :disabled="!can_op(op)" :style="{'grid-area': op.area || 'op-'+op.op}"  :title="op.key">{{op.label}}</touch-button>
+                      <template v-for="op in ops">
+                          <touch-button v-if="op.screen == 'main'" class="op" @click="add_op(op)" :disabled="!can_op(op)" :style="{'grid-area': op.area || 'op-'+op.op}"  :title="op.key">{{op.label}}</touch-button>
+                      </template>
                       <touch-button @click="add_number" class="push" title="Enter">Enter</touch-button>
                   </section>
                   <section class="screen trig">
-                      <touch-button v-for="op in ops" v-if="op.screen == 'trig'" class="op" @click="add_op(op)" :disabled="!can_op(op)" :style="{'grid-area': op.area || 'op-'+op.op}"  :title="op.key">{{op.label}}</touch-button>
+                      <template v-for="op in ops">
+                          <touch-button v-if="op.screen == 'trig'" class="op" @click="add_op(op)" :disabled="!can_op(op)" :style="{'grid-area': op.area || 'op-'+op.op}"  :title="op.key">{{op.label}}</touch-button>
+                      </template>
                   </section>
                   <section class="screen named">
                       <touch-button class="edit-named" @click="edit_named">✎</touch-button>
@@ -43,7 +44,9 @@
                   </section>
                   <section class="screen custom">
                       <touch-button class="add-custom" @click="edit_custom">✎</touch-button>
-                      <touch-button v-for="custom in custom_ops" class="custom-op" v-if="custom.valid" :disabled="!can_custom(custom)"  @click="add_custom(custom)" :style="{'grid-area': custom.position}">{{custom.symbol}}</touch-button>
+                      <template v-for="custom in custom_ops">
+                          <touch-button class="custom-op" v-if="custom.valid" :disabled="!can_custom(custom)"  @click="add_custom(custom)" :style="{'grid-area': custom.position}">{{custom.symbol}}</touch-button>
+                      </template>
                       <div class="nothing-here" v-if="!has_custom_ops">Custom ops will go here</div>
                   </section>
               </div>
