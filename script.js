@@ -222,7 +222,7 @@ class Op extends Item {
           const args = this.args.map(arg=>{
               const argn = arg.toMathML();
               if(!arg.label && arg instanceof Op && (arg.op.precedence<this.op.precedence || (arg.op.precedence==this.op.precedence && arg.op.symbol!=this.op.symbol))) {
-                  return `<mo>(</mo>${argn}<mo>)</mo>`;
+                  return `<mrow><mo>(</mo>${argn}<mo>)</mo></mrow>`;
               } else {
                   return argn;
               }
